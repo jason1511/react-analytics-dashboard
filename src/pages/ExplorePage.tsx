@@ -3,12 +3,20 @@ import { useDataset } from "../state/use-dataset";
 
 const MAX_PREVIEW_ROWS = 200;
 const DEBOUNCE_MS = 200;
-const MAX_VALUE_OPTIONS = 200; // prevent huge dropdowns
+const MAX_VALUE_OPTIONS = 200;
 
 type Filter = { column: string; value: string };
 
-function includesInsensitive(haystack: string, needle: string) {
-  return haystack.toLowerCase().includes(needle.toLowerCase());
+function normalize(s: string) {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[‐-‒–—−]/g, "-")
+    .replace(/\s+/g, " ");
+}
+
+function includesLoose(haystack: string, needle: string) {
+  return normalize(haystack).includes(normalize(needle));
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
@@ -32,45 +40,46 @@ export default function ExplorePage() {
   const [searchColumn, setSearchColumn] = useState<string>("__all__");
   const debouncedQuery = useDebouncedValue(query, DEBOUNCE_MS);
 
-  // Filters (chips)
+  // Filters (applied)
   const [filters, setFilters] = useState<Filter[]>([]);
-  const [filterColumn, setFilterColumn] = useState<string>("");
-  const [filterValue, setFilterValue] = useState<string>("");
 
-  // init default filter column once columns appear
+  // Filter builder (draft, not applied until Add)
+  const [draftColumn, setDraftColumn] = useState<string>("");
+  const [draftValue, setDraftValue] = useState<string>("");
+
+  // init default draft column when data loads
   useEffect(() => {
-    if (!filterColumn && columns.length) setFilterColumn(columns[0]);
-  }, [columns, filterColumn]);
+    if (!draftColumn && columns.length) setDraftColumn(columns[0]);
+  }, [columns, draftColumn]);
 
-  const valueOptions = useMemo(() => {
-    if (!filterColumn) return [];
-
-    // Collect unique values for the selected column
+  // Unique values for the draft column (dropdown options)
+  const draftValueOptions = useMemo(() => {
+    if (!draftColumn) return [];
     const set = new Set<string>();
     for (const r of rows) {
-      const v = (r[filterColumn] ?? "").trim();
+      const v = (r[draftColumn] ?? "").trim();
       if (v) set.add(v);
       if (set.size >= MAX_VALUE_OPTIONS) break;
     }
-
-    // Sort alphabetically for nicer UX
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [rows, filterColumn]);
+  }, [rows, draftColumn]);
 
-  // Make sure filterValue is valid when column changes
+  // when draft column changes, pick a sane default draft value
   useEffect(() => {
-    if (!valueOptions.length) {
-      setFilterValue("");
+    if (!draftValueOptions.length) {
+      setDraftValue("");
       return;
     }
-    // keep existing if present, else pick first
-    if (!valueOptions.includes(filterValue)) setFilterValue(valueOptions[0]);
+    if (!draftValue || !draftValueOptions.includes(draftValue)) {
+      setDraftValue(draftValueOptions[0]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterColumn, valueOptions.join("|")]);
+  }, [draftColumn, draftValueOptions.join("|")]);
 
   const filteredRows = useMemo(() => {
-    // 1) Apply chips (AND)
     let out = rows;
+
+    // 1) Apply filters (AND)
     if (filters.length) {
       out = out.filter((r) =>
         filters.every((f) => (r[f.column] ?? "") === f.value)
@@ -82,12 +91,10 @@ export default function ExplorePage() {
     if (!q) return out;
 
     if (searchColumn !== "__all__") {
-      return out.filter((r) => includesInsensitive(r[searchColumn] ?? "", q));
+      return out.filter((r) => includesLoose(r[searchColumn] ?? "", q));
     }
 
-    return out.filter((r) =>
-      columns.some((c) => includesInsensitive(r[c] ?? "", q))
-    );
+    return out.filter((r) => columns.some((c) => includesLoose(r[c] ?? "", q)));
   }, [rows, filters, debouncedQuery, searchColumn, columns]);
 
   if (!rows.length) {
@@ -104,14 +111,15 @@ export default function ExplorePage() {
   const shown = Math.min(filteredRows.length, MAX_PREVIEW_ROWS);
   const isFiltering = query.trim() !== debouncedQuery.trim();
 
-  function addFilter() {
-    if (!filterColumn || !filterValue) return;
+  const canAddFilter = Boolean(draftColumn && draftValue);
+  const draftAlreadyActive = filters.some(
+    (f) => f.column === draftColumn && f.value === draftValue
+  );
 
-    const next: Filter = { column: filterColumn, value: filterValue };
-    setFilters((prev) => {
-      const exists = prev.some((f) => keyOf(f) === keyOf(next));
-      return exists ? prev : [...prev, next];
-    });
+  function addFilter() {
+    if (!canAddFilter) return;
+    const next: Filter = { column: draftColumn, value: draftValue };
+    setFilters((prev) => (prev.some((f) => keyOf(f) === keyOf(next)) ? prev : [...prev, next]));
   }
 
   function removeFilter(toRemove: Filter) {
@@ -121,19 +129,17 @@ export default function ExplorePage() {
   function clearAll() {
     setQuery("");
     setSearchColumn("__all__");
-    setFilters([]);
+    setFilters([]); // important: no filters => show all rows
   }
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold">Explore Data</h2>
           <p className="text-sm text-slate-600">
             {fileName ? `Loaded: ${fileName}. ` : ""}
-            Showing {shown} of {filteredRows.length} matched rows (from{" "}
-            {rows.length} total).
+            Showing {shown} of {filteredRows.length} matched rows (from {rows.length} total).
             {isFiltering ? " Filtering…" : ""}
           </p>
         </div>
@@ -142,19 +148,17 @@ export default function ExplorePage() {
           className="w-full rounded-lg border bg-white px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
           onClick={clearAll}
           disabled={!query && filters.length === 0}
-          title="Clear search and filters"
+          title="Clear search and all active filters"
         >
           Clear all
         </button>
       </div>
 
       {/* Controls */}
-      <div className="rounded-xl border bg-white p-4 shadow-sm space-y-3">
+      <div className="rounded-xl border bg-white p-4 shadow-sm space-y-4">
         {/* Search row */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="text-sm font-medium text-slate-800 sm:w-28">
-            Search
-          </div>
+          <div className="text-sm font-medium text-slate-800 sm:w-28">Search</div>
 
           <select
             className="rounded-lg border bg-white px-3 py-2 text-sm sm:w-56"
@@ -163,15 +167,13 @@ export default function ExplorePage() {
           >
             <option value="__all__">All columns</option>
             {columns.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+              <option key={c} value={c}>{c}</option>
             ))}
           </select>
 
           <input
             className="w-full rounded-lg border bg-white px-3 py-2 text-sm sm:flex-1"
-            placeholder="Type to search…"
+            placeholder='Try: "e bike", "E-Bike", "x1"...'
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -185,37 +187,31 @@ export default function ExplorePage() {
           </button>
         </div>
 
-        {/* Filter row */}
+        {/* Filter builder row */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="text-sm font-medium text-slate-800 sm:w-28">
-            Filter
-          </div>
+          <div className="text-sm font-medium text-slate-800 sm:w-28">Add filter</div>
 
           <select
             className="rounded-lg border bg-white px-3 py-2 text-sm sm:w-56"
-            value={filterColumn}
-            onChange={(e) => setFilterColumn(e.target.value)}
+            value={draftColumn}
+            onChange={(e) => setDraftColumn(e.target.value)}
           >
             {columns.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+              <option key={c} value={c}>{c}</option>
             ))}
           </select>
 
           <select
             className="rounded-lg border bg-white px-3 py-2 text-sm sm:flex-1"
-            value={filterValue}
-            onChange={(e) => setFilterValue(e.target.value)}
-            disabled={!valueOptions.length}
+            value={draftValue}
+            onChange={(e) => setDraftValue(e.target.value)}
+            disabled={!draftValueOptions.length}
           >
-            {!valueOptions.length ? (
+            {!draftValueOptions.length ? (
               <option value="">No values</option>
             ) : (
-              valueOptions.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
+              draftValueOptions.map((v) => (
+                <option key={v} value={v}>{v}</option>
               ))
             )}
           </select>
@@ -223,36 +219,45 @@ export default function ExplorePage() {
           <button
             className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
             onClick={addFilter}
-            disabled={!filterColumn || !filterValue}
+            disabled={!canAddFilter || draftAlreadyActive}
+            title={draftAlreadyActive ? "This filter is already active" : "Add filter"}
           >
-            Add filter
+            {draftAlreadyActive ? "Added" : "Add"}
           </button>
         </div>
 
-        {/* Chips */}
-        {filters.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {filters.map((f) => (
-              <button
-                key={keyOf(f)}
-                className="inline-flex items-center gap-2 rounded-full border bg-slate-50 px-3 py-1 text-xs text-slate-700 hover:bg-slate-100"
-                onClick={() => removeFilter(f)}
-                title="Remove filter"
-              >
-                <span className="font-medium">{f.column}</span>
-                <span className="text-slate-500">=</span>
-                <span>{f.value}</span>
-                <span className="ml-1 text-slate-500">✕</span>
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Active filters (chips) */}
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-slate-600">Active filters</div>
 
-        {valueOptions.length >= MAX_VALUE_OPTIONS && (
-          <p className="text-xs text-slate-500">
-            Showing first {MAX_VALUE_OPTIONS} unique values for this column.
-          </p>
-        )}
+          {filters.length === 0 ? (
+            <div className="text-sm text-slate-500">
+              None (showing all rows)
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {filters.map((f) => (
+                <button
+                  key={keyOf(f)}
+                  className="inline-flex items-center gap-2 rounded-full border bg-slate-50 px-3 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                  onClick={() => removeFilter(f)}
+                  title="Remove filter"
+                >
+                  <span className="font-medium">{f.column}</span>
+                  <span className="text-slate-500">=</span>
+                  <span>{f.value}</span>
+                  <span className="ml-1 text-slate-500">✕</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {draftValueOptions.length >= MAX_VALUE_OPTIONS && (
+            <p className="text-xs text-slate-500">
+              Showing first {MAX_VALUE_OPTIONS} unique values for this column.
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Table */}
