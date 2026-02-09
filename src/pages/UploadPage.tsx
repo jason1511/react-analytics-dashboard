@@ -97,6 +97,26 @@ export default function UploadPage() {
         ].join(" ")}
       >
         <div className="rounded-xl border-2 border-dashed p-10 text-center">
+          <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
+  <div className="font-medium text-slate-900">Supported format</div>
+  <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+    <li>CSV files with a header row (first row = column names)</li>
+    <li>Comma-separated values (UTF-8 recommended)</li>
+    <li>Example columns: Date, Region, Category, Units, Revenue</li>
+  </ul>
+
+  <div className="mt-3">
+    <span className="text-slate-600">Need a sample?</span>{" "}
+    <a
+      className="font-medium text-slate-900 underline hover:text-slate-700"
+      href="/sales_mock.csv"
+      download
+    >
+      Download mock CSV
+    </a>
+  </div>
+</div>
+
           <div className="text-sm font-medium">Drop CSV here</div>
           <div className="mt-1 text-sm text-slate-500">
             or click “Choose CSV”

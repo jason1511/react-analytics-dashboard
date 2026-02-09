@@ -1,12 +1,11 @@
 import { NavLink } from "react-router-dom";
 
-const linkBase =
-  "block rounded-lg px-4 py-2 text-sm font-medium transition";
+const linkBase = "block rounded-lg px-4 py-2 text-sm font-medium transition";
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <aside className="w-64 shrink-0 bg-white border-r p-4">
-      <h1 className="text-lg font-bold mb-6">📊 Analytics</h1>
+    <div className="p-4">
+      <h1 className="mb-6 text-lg font-bold">📊 Analytics</h1>
 
       <nav className="space-y-2">
         {[
@@ -17,6 +16,7 @@ export default function Sidebar() {
           <NavLink
             key={link.to}
             to={link.to}
+            onClick={() => onNavigate?.()}
             className={({ isActive }) =>
               `${linkBase} ${
                 isActive
@@ -29,6 +29,6 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
-    </aside>
+    </div>
   );
 }

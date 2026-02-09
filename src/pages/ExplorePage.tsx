@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDataset } from "../state/use-dataset";
+import EmptyState from "../components/EmptyState";
 
 const MAX_PREVIEW_ROWS = 200;
 const DEBOUNCE_MS = 200;
@@ -98,15 +99,16 @@ export default function ExplorePage() {
   }, [rows, filters, debouncedQuery, searchColumn, columns]);
 
   if (!rows.length) {
-    return (
-      <div className="space-y-2">
-        <h2 className="text-xl font-semibold">Explore Data</h2>
-        <p className="text-sm text-slate-600">
-          No dataset loaded yet. Upload a CSV first.
-        </p>
-      </div>
-    );
-  }
+  return (
+    <div className="space-y-2">
+      <EmptyState
+        title="Explore Data"
+        description="No dataset loaded yet. Upload a CSV to search and filter your data."
+      />
+    </div>
+  );
+}
+
 
   const shown = Math.min(filteredRows.length, MAX_PREVIEW_ROWS);
   const isFiltering = query.trim() !== debouncedQuery.trim();
