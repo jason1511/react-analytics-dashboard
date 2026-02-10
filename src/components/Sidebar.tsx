@@ -1,8 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useTheme } from "../state/use-theme";
 
-const linkBase =
-  "block rounded-lg px-4 py-2 text-sm font-medium transition";
+const linkBase = "block rounded-lg px-4 py-2 text-sm font-medium transition";
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { isDark, toggle } = useTheme();
@@ -39,21 +38,20 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {/* Theme toggle */}
-      <div className="mt-6 border-t pt-4">
+      <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-800">
         <button
           onClick={toggle}
           className="
             flex w-full items-center justify-between rounded-lg
-            border px-3 py-2 text-sm font-medium
+            border border-slate-200 px-3 py-2 text-sm font-medium
             bg-white text-slate-700 hover:bg-slate-50
-            dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700
+            dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200
             dark:hover:bg-slate-800
           "
+          aria-label="Toggle theme"
         >
           <span>{isDark ? "Dark mode" : "Light mode"}</span>
-          <span className="text-base">
-            {isDark ? "🌙" : "☀️"}
-          </span>
+          <span className="text-base">{isDark ? "🌙" : "☀️"}</span>
         </button>
       </div>
     </div>

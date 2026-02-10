@@ -11,11 +11,15 @@ body,
 body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
-:root {
-  --chart-bar: #2563eb;          /* blue */
-  --chart-bar-accent: #8b5cf6;   /* violet */
 
-  --chart-grid: rgba(15, 23, 42, 0.12);       /* slate-900 @ low alpha */
+/* -------------------------------------------------------
+   Light mode defaults (ALWAYS used unless html.dark exists)
+-------------------------------------------------------- */
+:root {
+  --chart-bar: #2563eb;        /* blue */
+  --chart-bar-accent: #8b5cf6; /* violet */
+
+  --chart-grid: rgba(15, 23, 42, 0.12);
   --chart-axis: rgba(15, 23, 42, 0.75);
   --chart-axis-line: rgba(15, 23, 42, 0.25);
 
@@ -26,32 +30,38 @@ body {
   --chart-hover: rgba(15, 23, 42, 0.05);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --chart-bar: #e2e8f0; /* slate-200 */
-    --chart-bar-accent: #818cf8; /* indigo-400 */
-
-    --chart-grid: rgba(226, 232, 240, 0.14);
-    --chart-tooltip-bg: #0b1220;
-    --chart-tooltip-border: rgba(226, 232, 240, 0.14);
-    --chart-tooltip-text: #e2e8f0;
-  }
-}
+/* Force page background for light mode */
 html {
+  background-color: #f1f5f9; /* slate-100 */
+  color-scheme: light;
+}
+
+body {
   background-color: #f1f5f9; /* slate-100 */
 }
 
+/* -------------------------------------------------------
+   Dark mode overrides (ONLY when html has class="dark")
+-------------------------------------------------------- */
 html.dark {
+  background-color: #020617; /* slate-950 */
+  color-scheme: dark;
+}
+
+html.dark body {
   background-color: #020617; /* slate-950 */
 }
 
+/* Dark tokens */
+html.dark {
+  --chart-bar: #e2e8f0;        /* slate-200 */
+  --chart-bar-accent: #818cf8; /* indigo-400 */
 
-.dark {
-  --chart-grid: rgba(148, 163, 184, 0.18);   /* slate-400 @ alpha */
-  --chart-axis: rgba(226, 232, 240, 0.85);   /* slate-200 */
+  --chart-grid: rgba(148, 163, 184, 0.18);
+  --chart-axis: rgba(226, 232, 240, 0.85);
   --chart-axis-line: rgba(148, 163, 184, 0.35);
 
-  --chart-tooltip-bg: #0b1220;               /* deep slate */
+  --chart-tooltip-bg: #0b1220;
   --chart-tooltip-border: rgba(148, 163, 184, 0.25);
   --chart-tooltip-text: rgba(226, 232, 240, 0.92);
 
