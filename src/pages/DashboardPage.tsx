@@ -145,6 +145,7 @@ export default function DashboardPage() {
   const [groupBy, setGroupBy] = useState("");
   const [valueCol, setValueCol] = useState("");
 
+  // pick defaults after CSV loads / changes
   useEffect(() => {
     if (!columns.length) {
       setGroupBy("");
@@ -163,6 +164,8 @@ export default function DashboardPage() {
     } else {
       setValueCol("");
     }
+    // NOTE: keep your eslint disable if you want, but this is generally fine:
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns, rows, numericCols.join("|")]);
 
   const countData = useMemo(() => {
@@ -175,6 +178,11 @@ export default function DashboardPage() {
     return sumByGroup(rows, groupBy, valueCol);
   }, [rows, groupBy, valueCol]);
 
+  const distinctGroups = useMemo(() => {
+    if (!groupBy || !rows.length) return 0;
+    return new Set(rows.map((r) => (r[groupBy] || "—").trim() || "—")).size;
+  }, [rows, groupBy]);
+
   if (!rows.length) {
     return (
       <EmptyState
@@ -183,10 +191,6 @@ export default function DashboardPage() {
       />
     );
   }
-
-  const distinctGroups = new Set(
-    rows.map((r) => (r[groupBy] || "—").trim() || "—")
-  ).size;
 
   return (
     <div className="space-y-4">
@@ -203,28 +207,30 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Rows" value={rows.length.toLocaleString()} />
         <KpiCard label="Columns" value={columns.length.toString()} />
-        <KpiCard label="Distinct groups" value={distinctGroups.toLocaleString()} />
+        <KpiCard
+          label="Distinct groups"
+          value={distinctGroups.toLocaleString()}
+        />
         <KpiCard label="Numeric columns" value={numericCols.length.toString()} />
       </div>
 
       {/* Controls */}
-      <div className="rounded-xl border bg-white p-4 shadow-sm
-                      border-slate-200 dark:border-slate-800
-                      dark:bg-slate-900">
+      <div className="rounded-xl border bg-white p-4 shadow-sm border-slate-200 dark:border-slate-800 dark:bg-slate-900">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <div>
             <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
               Group by
             </div>
             <select
-              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm
-                         bg-white border-slate-200
+              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm bg-white border-slate-200 text-slate-900
                          dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
               value={groupBy}
               onChange={(e) => setGroupBy(e.target.value)}
             >
               {columns.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>
+                  {c}
+                </option>
               ))}
             </select>
           </div>
@@ -234,18 +240,21 @@ export default function DashboardPage() {
               Sum column
             </div>
             <select
-              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm
-                         bg-white border-slate-200
+              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm bg-white border-slate-200 text-slate-900 disabled:opacity-50
                          dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
               value={valueCol}
               onChange={(e) => setValueCol(e.target.value)}
               disabled={numericCols.length === 0}
             >
-              {numericCols.length === 0
-                ? <option>(No numeric columns)</option>
-                : numericCols.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+              {numericCols.length === 0 ? (
+                <option value="">(No numeric columns)</option>
+              ) : (
+                numericCols.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -272,7 +281,11 @@ export default function DashboardPage() {
           variant="primary"
         />
         <BarCountChart
-          title={`Sum of "${valueCol}" by "${groupBy}"`}
+          title={
+            valueCol
+              ? `Sum of "${valueCol}" by "${groupBy}"`
+              : "Sum chart (no numeric columns)"
+          }
           data={valueCol ? sumData : []}
           variant="accent"
         />
@@ -280,18 +293,14 @@ export default function DashboardPage() {
 
       {/* Top 5 table */}
       {valueCol && sumData.length > 0 && (
-        <div className="rounded-xl border bg-white p-4 shadow-sm
-                        border-slate-200 dark:border-slate-800
-                        dark:bg-slate-900">
+        <div className="rounded-xl border bg-white p-4 shadow-sm border-slate-200 dark:border-slate-800 dark:bg-slate-900">
           <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
             Top 5 by {valueCol} (grouped by {groupBy})
           </div>
 
-          <div className="mt-3 overflow-hidden rounded-lg border
-                          border-slate-200 dark:border-slate-800">
+          <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600
-                                dark:bg-slate-800 dark:text-slate-300">
+              <thead className="bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Group</th>
                   <th className="px-3 py-2 text-right font-medium">Total</th>
@@ -306,8 +315,7 @@ export default function DashboardPage() {
                     <td className="px-3 py-2 text-slate-900 dark:text-slate-100">
                       {r.label}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums
-                                   text-slate-900 dark:text-slate-100">
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-900 dark:text-slate-100">
                       {formatNumber(r.value)}
                     </td>
                   </tr>

@@ -18,23 +18,11 @@ function getInitialDark(): boolean {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState<boolean>(() => getInitialDark());
 
-  // Apply to <html> whenever isDark changes
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", isDark);
     localStorage.setItem("theme", isDark ? "dark" : "light");
   }, [isDark]);
-
-  // Safety sync: if something else changed the class, reflect it
-  useEffect(() => {
-    const root = document.documentElement;
-    const observer = new MutationObserver(() => {
-      const hasDark = root.classList.contains("dark");
-      setIsDark(hasDark);
-    });
-    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
 
   const value = useMemo(
     () => ({
