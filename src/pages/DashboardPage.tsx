@@ -19,6 +19,45 @@ function getCategoryCounts(rows: Record<string, string>[], column: string) {
     .slice(0, 15);
 }
 
+function pickDefaultGroupBy(columns: string[], rows: Record<string, string>[]) {
+  if (!columns.length || !rows.length) return columns[0] ?? "";
+
+  const candidates = columns
+    .map((c) => {
+      const set = new Set<string>();
+      let nonEmpty = 0;
+
+      for (const r of rows) {
+        const v = (r[c] ?? "").trim();
+        if (!v) continue;
+        nonEmpty++;
+        set.add(v);
+        if (set.size > 50) break;
+      }
+
+      const distinct = set.size;
+      const distinctRatio = nonEmpty ? distinct / nonEmpty : 1;
+
+      const name = c.toLowerCase();
+      const looksLikeDateOrId =
+        name.includes("date") ||
+        name.includes("time") ||
+        name.includes("id") ||
+        name.includes("timestamp");
+
+      let score = 0;
+      if (distinct >= 2) score += 1;
+      if (distinct >= 5 && distinct <= 20) score += 3;
+      if (distinctRatio > 0.9) score -= 3;
+      if (looksLikeDateOrId) score -= 2;
+
+      return { col: c, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.col ?? columns[0];
+}
+
 function isNumericLike(v: string) {
   const s = (v ?? "").trim();
   if (!s) return false;
@@ -76,11 +115,19 @@ function sumByGroup(
     .slice(0, 15);
 }
 
+function formatNumber(n: number) {
+  if (Math.abs(n) >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (Math.abs(n) >= 1_000) return (n / 1_000).toFixed(1) + "k";
+  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-white p-4 shadow">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
+    <div className="rounded-xl bg-white p-4 shadow dark:bg-slate-900">
+      <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">
+        {value}
+      </p>
     </div>
   );
 }
@@ -95,64 +142,61 @@ export default function DashboardPage() {
     [columns, rows]
   );
 
-  // defaults (will be set after CSV loads)
-  const [groupBy, setGroupBy] = useState<string>("");
-  const [mode, setMode] = useState<"count" | "sum">("count");
-  const [valueCol, setValueCol] = useState<string>("");
+  const [groupBy, setGroupBy] = useState("");
+  const [valueCol, setValueCol] = useState("");
 
-  // Keep defaults in sync when dataset changes
   useEffect(() => {
     if (!columns.length) {
       setGroupBy("");
       setValueCol("");
-      setMode("count");
       return;
     }
 
-    // If current groupBy missing, set first column
-    if (!groupBy || !columns.includes(groupBy)) setGroupBy(columns[0]);
+    if (!groupBy || !columns.includes(groupBy)) {
+      setGroupBy(pickDefaultGroupBy(columns, rows));
+    }
 
-    // If sum mode but no numeric columns, fall back to count
-    if (mode === "sum" && numericCols.length === 0) setMode("count");
-
-    // Ensure valueCol is a valid numeric col
     if (numericCols.length > 0) {
-      if (!valueCol || !numericCols.includes(valueCol)) setValueCol(numericCols[0]);
+      if (!valueCol || !numericCols.includes(valueCol)) {
+        setValueCol(numericCols[0]);
+      }
     } else {
       setValueCol("");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns, numericCols.join("|")]);
+  }, [columns, rows, numericCols.join("|")]);
 
-  const chartData = useMemo(() => {
+  const countData = useMemo(() => {
     if (!groupBy || !rows.length) return [];
-
-    if (mode === "sum" && valueCol) {
-      return sumByGroup(rows, groupBy, valueCol);
-    }
     return getCategoryCounts(rows, groupBy);
-  }, [rows, groupBy, mode, valueCol]);
+  }, [rows, groupBy]);
+
+  const sumData = useMemo(() => {
+    if (!groupBy || !rows.length || !valueCol) return [];
+    return sumByGroup(rows, groupBy, valueCol);
+  }, [rows, groupBy, valueCol]);
 
   if (!rows.length) {
     return (
-      <div className="space-y-2">
-        <EmptyState
-          title="Dashboard"
-          description="No dataset loaded yet. Upload a CSV to see summary stats and charts."
-        />
-      </div>
+      <EmptyState
+        title="Dashboard"
+        description="No dataset loaded yet. Upload a CSV to see summary stats and charts."
+      />
     );
   }
 
-  const distinctGroups = groupBy
-    ? new Set(rows.map((r) => (r[groupBy] || "—").trim() || "—")).size
-    : 0;
+  const distinctGroups = new Set(
+    rows.map((r) => (r[groupBy] || "—").trim() || "—")
+  ).size;
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">Dashboard</h2>
-        <p className="text-sm text-slate-600">{fileName ? `Loaded: ${fileName}` : ""}</p>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+          Dashboard
+        </h2>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          {fileName ? `Loaded: ${fileName}` : ""}
+        </p>
       </div>
 
       {/* KPIs */}
@@ -163,73 +207,116 @@ export default function DashboardPage() {
         <KpiCard label="Numeric columns" value={numericCols.length.toString()} />
       </div>
 
-      {/* Chart controls */}
-      <div className="rounded-xl border bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-slate-900">Chart</div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select
-                className="rounded-lg border bg-white px-3 py-2 text-sm sm:w-56"
-                value={mode}
-                onChange={(e) => setMode(e.target.value as "count" | "sum")}
-              >
-                <option value="count">Count rows</option>
-                <option value="sum" disabled={numericCols.length === 0}>
-                  Sum numeric column
-                </option>
-              </select>
-
-              {mode === "sum" && (
-                <select
-                  className="rounded-lg border bg-white px-3 py-2 text-sm sm:w-64"
-                  value={valueCol}
-                  onChange={(e) => setValueCol(e.target.value)}
-                  disabled={numericCols.length === 0}
-                  title={numericCols.length === 0 ? "No numeric columns detected" : ""}
-                >
-                  {numericCols.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              )}
+      {/* Controls */}
+      <div className="rounded-xl border bg-white p-4 shadow-sm
+                      border-slate-200 dark:border-slate-800
+                      dark:bg-slate-900">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <div>
+            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              Group by
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-slate-900">Group by</div>
             <select
-              className="rounded-lg border bg-white px-3 py-2 text-sm sm:w-64"
+              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm
+                         bg-white border-slate-200
+                         dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
               value={groupBy}
               onChange={(e) => setGroupBy(e.target.value)}
             >
               {columns.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </div>
-        </div>
 
-        {mode === "sum" && numericCols.length === 0 && (
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            No numeric columns detected, so “Sum numeric column” is disabled.
+          <div>
+            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              Sum column
+            </div>
+            <select
+              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm
+                         bg-white border-slate-200
+                         dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
+              value={valueCol}
+              onChange={(e) => setValueCol(e.target.value)}
+              disabled={numericCols.length === 0}
+            >
+              {numericCols.length === 0
+                ? <option>(No numeric columns)</option>
+                : numericCols.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+            </select>
           </div>
-        )}
+
+          <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Quick insight
+            </div>
+            <div className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
+              {valueCol && sumData.length
+                ? `Top: ${sumData[0].label} (${formatNumber(sumData[0].value)})`
+                : countData.length
+                ? `Top: ${countData[0].label} (${countData[0].value} rows)`
+                : "—"}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Chart */}
-      <BarCountChart
-        title={
-          mode === "sum" && valueCol
-            ? `Sum of "${valueCol}" by "${groupBy}"`
-            : `Row count by "${groupBy}"`
-        }
-        data={chartData}
-      />
+      {/* Charts */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <BarCountChart
+          title={`Row count by "${groupBy}"`}
+          data={countData}
+          variant="primary"
+        />
+        <BarCountChart
+          title={`Sum of "${valueCol}" by "${groupBy}"`}
+          data={valueCol ? sumData : []}
+          variant="accent"
+        />
+      </div>
+
+      {/* Top 5 table */}
+      {valueCol && sumData.length > 0 && (
+        <div className="rounded-xl border bg-white p-4 shadow-sm
+                        border-slate-200 dark:border-slate-800
+                        dark:bg-slate-900">
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            Top 5 by {valueCol} (grouped by {groupBy})
+          </div>
+
+          <div className="mt-3 overflow-hidden rounded-lg border
+                          border-slate-200 dark:border-slate-800">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600
+                                dark:bg-slate-800 dark:text-slate-300">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">Group</th>
+                  <th className="px-3 py-2 text-right font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sumData.slice(0, 5).map((r) => (
+                  <tr
+                    key={r.label}
+                    className="border-t border-slate-200 dark:border-slate-800"
+                  >
+                    <td className="px-3 py-2 text-slate-900 dark:text-slate-100">
+                      {r.label}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums
+                                   text-slate-900 dark:text-slate-100">
+                      {formatNumber(r.value)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

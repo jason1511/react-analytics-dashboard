@@ -44,7 +44,7 @@ export default function ExplorePage() {
   // Filters (applied)
   const [filters, setFilters] = useState<Filter[]>([]);
 
-  // Filter builder (draft, not applied until Add)
+  // Filter builder (draft)
   const [draftColumn, setDraftColumn] = useState<string>("");
   const [draftValue, setDraftValue] = useState<string>("");
 
@@ -53,7 +53,7 @@ export default function ExplorePage() {
     if (!draftColumn && columns.length) setDraftColumn(columns[0]);
   }, [columns, draftColumn]);
 
-  // Unique values for the draft column (dropdown options)
+  // Unique values for draft column
   const draftValueOptions = useMemo(() => {
     if (!draftColumn) return [];
     const set = new Set<string>();
@@ -65,7 +65,7 @@ export default function ExplorePage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [rows, draftColumn]);
 
-  // when draft column changes, pick a sane default draft value
+  // when draft column changes, pick a default draft value
   useEffect(() => {
     if (!draftValueOptions.length) {
       setDraftValue("");
@@ -80,14 +80,14 @@ export default function ExplorePage() {
   const filteredRows = useMemo(() => {
     let out = rows;
 
-    // 1) Apply filters (AND)
+    // 1) filters (AND)
     if (filters.length) {
       out = out.filter((r) =>
         filters.every((f) => (r[f.column] ?? "") === f.value)
       );
     }
 
-    // 2) Apply search
+    // 2) search
     const q = debouncedQuery.trim();
     if (!q) return out;
 
@@ -99,16 +99,15 @@ export default function ExplorePage() {
   }, [rows, filters, debouncedQuery, searchColumn, columns]);
 
   if (!rows.length) {
-  return (
-    <div className="space-y-2">
-      <EmptyState
-        title="Explore Data"
-        description="No dataset loaded yet. Upload a CSV to search and filter your data."
-      />
-    </div>
-  );
-}
-
+    return (
+      <div className="space-y-2">
+        <EmptyState
+          title="Explore Data"
+          description="No dataset loaded yet. Upload a CSV to search and filter your data."
+        />
+      </div>
+    );
+  }
 
   const shown = Math.min(filteredRows.length, MAX_PREVIEW_ROWS);
   const isFiltering = query.trim() !== debouncedQuery.trim();
@@ -121,7 +120,9 @@ export default function ExplorePage() {
   function addFilter() {
     if (!canAddFilter) return;
     const next: Filter = { column: draftColumn, value: draftValue };
-    setFilters((prev) => (prev.some((f) => keyOf(f) === keyOf(next)) ? prev : [...prev, next]));
+    setFilters((prev) =>
+      prev.some((f) => keyOf(f) === keyOf(next)) ? prev : [...prev, next]
+    );
   }
 
   function removeFilter(toRemove: Filter) {
@@ -131,23 +132,30 @@ export default function ExplorePage() {
   function clearAll() {
     setQuery("");
     setSearchColumn("__all__");
-    setFilters([]); // important: no filters => show all rows
+    setFilters([]); // no filters => show all rows
   }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Explore Data</h2>
-          <p className="text-sm text-slate-600">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+            Explore Data
+          </h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             {fileName ? `Loaded: ${fileName}. ` : ""}
-            Showing {shown} of {filteredRows.length} matched rows (from {rows.length} total).
+            Showing {shown.toLocaleString()} of{" "}
+            {filteredRows.length.toLocaleString()} matched rows (from{" "}
+            {rows.length.toLocaleString()} total).
             {isFiltering ? " Filtering…" : ""}
           </p>
         </div>
 
         <button
-          className="w-full rounded-lg border bg-white px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
+          className="w-full rounded-lg border px-3 py-2 text-sm disabled:opacity-50 sm:w-auto
+                     bg-white hover:bg-slate-50
+                     dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200
+                     dark:hover:bg-slate-800"
           onClick={clearAll}
           disabled={!query && filters.length === 0}
           title="Clear search and all active filters"
@@ -157,31 +165,42 @@ export default function ExplorePage() {
       </div>
 
       {/* Controls */}
-      <div className="rounded-xl border bg-white p-4 shadow-sm space-y-4">
+      <div className="rounded-xl border p-4 shadow-sm space-y-4
+                      bg-white dark:bg-slate-900 dark:border-slate-800">
         {/* Search row */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="text-sm font-medium text-slate-800 sm:w-28">Search</div>
+          <div className="text-sm font-medium text-slate-800 dark:text-slate-200 sm:w-28">
+            Search
+          </div>
 
           <select
-            className="rounded-lg border bg-white px-3 py-2 text-sm sm:w-56"
+            className="rounded-lg border px-3 py-2 text-sm sm:w-56
+                       bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
             value={searchColumn}
             onChange={(e) => setSearchColumn(e.target.value)}
           >
             <option value="__all__">All columns</option>
             {columns.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
           </select>
 
           <input
-            className="w-full rounded-lg border bg-white px-3 py-2 text-sm sm:flex-1"
+            className="w-full rounded-lg border px-3 py-2 text-sm sm:flex-1
+                       bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200
+                       placeholder:text-slate-400 dark:placeholder:text-slate-500"
             placeholder='Try: "e bike", "E-Bike", "x1"...'
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
 
           <button
-            className="rounded-lg border bg-white px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50
+                       bg-white hover:bg-slate-50
+                       dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200
+                       dark:hover:bg-slate-800"
             onClick={() => setQuery("")}
             disabled={!query}
           >
@@ -191,20 +210,26 @@ export default function ExplorePage() {
 
         {/* Filter builder row */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="text-sm font-medium text-slate-800 sm:w-28">Add filter</div>
+          <div className="text-sm font-medium text-slate-800 dark:text-slate-200 sm:w-28">
+            Add filter
+          </div>
 
           <select
-            className="rounded-lg border bg-white px-3 py-2 text-sm sm:w-56"
+            className="rounded-lg border px-3 py-2 text-sm sm:w-56
+                       bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
             value={draftColumn}
             onChange={(e) => setDraftColumn(e.target.value)}
           >
             {columns.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
           </select>
 
           <select
-            className="rounded-lg border bg-white px-3 py-2 text-sm sm:flex-1"
+            className="rounded-lg border px-3 py-2 text-sm sm:flex-1 disabled:opacity-50
+                       bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
             value={draftValue}
             onChange={(e) => setDraftValue(e.target.value)}
             disabled={!draftValueOptions.length}
@@ -213,13 +238,17 @@ export default function ExplorePage() {
               <option value="">No values</option>
             ) : (
               draftValueOptions.map((v) => (
-                <option key={v} value={v}>{v}</option>
+                <option key={v} value={v}>
+                  {v}
+                </option>
               ))
             )}
           </select>
 
           <button
-            className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
+            className="rounded-lg px-3 py-2 text-sm text-white disabled:opacity-50
+                       bg-slate-900 hover:bg-slate-800
+                       dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
             onClick={addFilter}
             disabled={!canAddFilter || draftAlreadyActive}
             title={draftAlreadyActive ? "This filter is already active" : "Add filter"}
@@ -230,10 +259,12 @@ export default function ExplorePage() {
 
         {/* Active filters (chips) */}
         <div className="space-y-2">
-          <div className="text-xs font-medium text-slate-600">Active filters</div>
+          <div className="text-xs font-medium text-slate-600 dark:text-slate-400">
+            Active filters
+          </div>
 
           {filters.length === 0 ? (
-            <div className="text-sm text-slate-500">
+            <div className="text-sm text-slate-500 dark:text-slate-400">
               None (showing all rows)
             </div>
           ) : (
@@ -241,21 +272,23 @@ export default function ExplorePage() {
               {filters.map((f) => (
                 <button
                   key={keyOf(f)}
-                  className="inline-flex items-center gap-2 rounded-full border bg-slate-50 px-3 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                  className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs
+                             bg-slate-50 text-slate-700 hover:bg-slate-100
+                             dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
                   onClick={() => removeFilter(f)}
                   title="Remove filter"
                 >
                   <span className="font-medium">{f.column}</span>
-                  <span className="text-slate-500">=</span>
-                  <span>{f.value}</span>
-                  <span className="ml-1 text-slate-500">✕</span>
+                  <span className="text-slate-500 dark:text-slate-400">=</span>
+                  <span className="truncate max-w-[180px]">{f.value}</span>
+                  <span className="ml-1 text-slate-500 dark:text-slate-400">✕</span>
                 </button>
               ))}
             </div>
           )}
 
           {draftValueOptions.length >= MAX_VALUE_OPTIONS && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Showing first {MAX_VALUE_OPTIONS} unique values for this column.
             </p>
           )}
@@ -263,14 +296,17 @@ export default function ExplorePage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-auto rounded-xl border bg-white shadow">
+      <div className="overflow-auto rounded-xl border shadow
+                      bg-white dark:bg-slate-900 dark:border-slate-800">
         <table className="min-w-full border-collapse text-sm">
-          <thead className="sticky top-0 bg-slate-50">
+          <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800">
             <tr>
               {columns.map((col) => (
                 <th
                   key={col}
-                  className="border-b px-3 py-2 text-left font-medium text-slate-700"
+                  className="border-b px-3 py-2 text-left font-medium
+                             text-slate-700 dark:text-slate-200
+                             border-slate-200 dark:border-slate-700"
                 >
                   {col}
                 </th>
@@ -280,9 +316,19 @@ export default function ExplorePage() {
 
           <tbody>
             {filteredRows.slice(0, MAX_PREVIEW_ROWS).map((row, idx) => (
-              <tr key={idx} className="odd:bg-white even:bg-slate-50">
+              <tr
+                key={idx}
+                className="border-b
+                           border-slate-200 dark:border-slate-800
+                           odd:bg-white even:bg-slate-50
+                           dark:odd:bg-slate-900 dark:even:bg-slate-950/40
+                           hover:bg-slate-100 dark:hover:bg-slate-800/60"
+              >
                 {columns.map((col) => (
-                  <td key={col} className="border-b px-3 py-2 text-slate-700">
+                  <td
+                    key={col}
+                    className="px-3 py-2 text-slate-700 dark:text-slate-200"
+                  >
                     {row[col]}
                   </td>
                 ))}
@@ -293,7 +339,7 @@ export default function ExplorePage() {
       </div>
 
       {filteredRows.length > MAX_PREVIEW_ROWS && (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Showing first {MAX_PREVIEW_ROWS} results. Pagination is coming next.
         </p>
       )}
