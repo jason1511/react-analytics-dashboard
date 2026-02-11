@@ -7,12 +7,10 @@ import EmptyState from "../components/EmptyState";
 
 function getCategoryCounts(rows: Record<string, string>[], column: string) {
   const map = new Map<string, number>();
-
   for (const r of rows) {
     const key = (r[column] || "—").trim() || "—";
     map.set(key, (map.get(key) ?? 0) + 1);
   }
-
   return Array.from(map.entries())
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value)
@@ -51,7 +49,7 @@ function pickDefaultGroupBy(columns: string[], rows: Record<string, string>[]) {
       if (distinctRatio > 0.9) score -= 3;
       if (looksLikeDateOrId) score -= 2;
 
-      return { col: c, score };
+      return { col: c, score, distinct, distinctRatio };
     })
     .sort((a, b) => b.score - a.score);
 
@@ -74,7 +72,7 @@ function toNumberSafe(v: string) {
 function detectNumericColumns(
   columns: string[],
   rows: Record<string, string>[],
-  sampleSize = 60
+  sampleSize = 80
 ) {
   const sample = rows.slice(0, sampleSize);
   const numeric: string[] = [];
@@ -102,13 +100,11 @@ function sumByGroup(
   valueCol: string
 ) {
   const map = new Map<string, number>();
-
   for (const r of rows) {
     const key = (r[groupCol] || "—").trim() || "—";
     const val = toNumberSafe(r[valueCol] ?? "");
     map.set(key, (map.get(key) ?? 0) + val);
   }
-
   return Array.from(map.entries())
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value)
@@ -121,15 +117,71 @@ function formatNumber(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-function KpiCard({ label, value }: { label: string; value: string }) {
+function KpiCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
     <div className="rounded-xl bg-white p-4 shadow dark:bg-slate-900">
       <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
       <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">
         {value}
       </p>
+      {hint ? (
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</p>
+      ) : null}
     </div>
   );
+}
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+      {children}
+    </span>
+  );
+}
+
+function columnStats(columns: string[], rows: Record<string, string>[]) {
+  const N = rows.length || 0;
+
+  return columns.map((c) => {
+    let missing = 0;
+    const set = new Set<string>();
+
+    // sample-ish: we can scan all rows; still fine for moderate CSVs
+    for (const r of rows) {
+      const v = (r[c] ?? "").trim();
+      if (!v) missing++;
+      else set.add(v);
+    }
+
+    // type guess by sampling a bit
+    const sample = rows.slice(0, Math.min(80, rows.length));
+    let seen = 0;
+    let numericOk = 0;
+    for (const r of sample) {
+      const v = (r[c] ?? "").trim();
+      if (!v) continue;
+      seen++;
+      if (isNumericLike(v)) numericOk++;
+    }
+    const kind =
+      seen > 0 && numericOk / seen >= 0.8 ? "numeric" : "categorical";
+
+    return {
+      col: c,
+      kind,
+      distinct: set.size,
+      missing,
+      completeness: N ? (N - missing) / N : 0,
+    };
+  });
 }
 
 /* ---------- page ---------- */
@@ -145,7 +197,6 @@ export default function DashboardPage() {
   const [groupBy, setGroupBy] = useState("");
   const [valueCol, setValueCol] = useState("");
 
-  // pick defaults after CSV loads / changes
   useEffect(() => {
     if (!columns.length) {
       setGroupBy("");
@@ -158,13 +209,10 @@ export default function DashboardPage() {
     }
 
     if (numericCols.length > 0) {
-      if (!valueCol || !numericCols.includes(valueCol)) {
-        setValueCol(numericCols[0]);
-      }
+      if (!valueCol || !numericCols.includes(valueCol)) setValueCol(numericCols[0]);
     } else {
       setValueCol("");
     }
-    // NOTE: keep your eslint disable if you want, but this is generally fine:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns, rows, numericCols.join("|")]);
 
@@ -183,6 +231,40 @@ export default function DashboardPage() {
     return new Set(rows.map((r) => (r[groupBy] || "—").trim() || "—")).size;
   }, [rows, groupBy]);
 
+  const quality = useMemo(() => {
+    const totalCells = rows.length * columns.length;
+    if (!totalCells) return { totalCells: 0, missingCells: 0, completeness: 0 };
+
+    let missingCells = 0;
+    for (const r of rows) {
+      for (const c of columns) {
+        if (!(r[c] ?? "").trim()) missingCells++;
+      }
+    }
+
+    const completeness = (totalCells - missingCells) / totalCells;
+    return { totalCells, missingCells, completeness };
+  }, [rows, columns]);
+
+  const colSummary = useMemo(() => {
+    const stats = columnStats(columns, rows);
+
+    // Show most “useful” columns first: low missing + reasonable distinct counts
+    return stats
+      .sort((a, b) => {
+        const aScore =
+          (a.kind === "numeric" ? 2 : 1) +
+          (1 - a.missing / Math.max(1, rows.length)) +
+          (a.distinct >= 2 && a.distinct <= 30 ? 1 : 0);
+        const bScore =
+          (b.kind === "numeric" ? 2 : 1) +
+          (1 - b.missing / Math.max(1, rows.length)) +
+          (b.distinct >= 2 && b.distinct <= 30 ? 1 : 0);
+        return bScore - aScore;
+      })
+      .slice(0, 6);
+  }, [columns, rows]);
+
   if (!rows.length) {
     return (
       <EmptyState
@@ -193,7 +275,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
         <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
           Dashboard
@@ -204,14 +286,21 @@ export default function DashboardPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <KpiCard label="Rows" value={rows.length.toLocaleString()} />
         <KpiCard label="Columns" value={columns.length.toString()} />
+        <KpiCard label="Distinct groups" value={distinctGroups.toLocaleString()} />
+        <KpiCard label="Numeric cols" value={numericCols.length.toString()} />
         <KpiCard
-          label="Distinct groups"
-          value={distinctGroups.toLocaleString()}
+          label="Missing cells"
+          value={quality.missingCells.toLocaleString()}
+          hint={`of ${quality.totalCells.toLocaleString()} cells`}
         />
-        <KpiCard label="Numeric columns" value={numericCols.length.toString()} />
+        <KpiCard
+          label="Completeness"
+          value={(quality.completeness * 100).toFixed(1) + "%"}
+          hint="Higher is better"
+        />
       </div>
 
       {/* Controls */}
@@ -228,9 +317,7 @@ export default function DashboardPage() {
               onChange={(e) => setGroupBy(e.target.value)}
             >
               {columns.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </div>
@@ -250,9 +337,7 @@ export default function DashboardPage() {
                 <option value="">(No numeric columns)</option>
               ) : (
                 numericCols.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                  <option key={c} value={c}>{c}</option>
                 ))
               )}
             </select>
@@ -269,62 +354,70 @@ export default function DashboardPage() {
                 ? `Top: ${countData[0].label} (${countData[0].value} rows)`
                 : "—"}
             </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Chip>{groupBy || "—"}</Chip>
+              <Chip>{valueCol || "No numeric"}</Chip>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <BarCountChart title={`Row count by "${groupBy}"`} data={countData} variant="primary" />
         <BarCountChart
-          title={`Row count by "${groupBy}"`}
-          data={countData}
-          variant="primary"
-        />
-        <BarCountChart
-          title={
-            valueCol
-              ? `Sum of "${valueCol}" by "${groupBy}"`
-              : "Sum chart (no numeric columns)"
-          }
+          title={valueCol ? `Sum of "${valueCol}" by "${groupBy}"` : "Sum chart (no numeric columns)"}
           data={valueCol ? sumData : []}
           variant="accent"
         />
       </div>
 
-      {/* Top 5 table */}
-      {valueCol && sumData.length > 0 && (
-        <div className="rounded-xl border bg-white p-4 shadow-sm border-slate-200 dark:border-slate-800 dark:bg-slate-900">
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-            Top 5 by {valueCol} (grouped by {groupBy})
-          </div>
-
-          <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium">Group</th>
-                  <th className="px-3 py-2 text-right font-medium">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sumData.slice(0, 5).map((r) => (
-                  <tr
-                    key={r.label}
-                    className="border-t border-slate-200 dark:border-slate-800"
-                  >
-                    <td className="px-3 py-2 text-slate-900 dark:text-slate-100">
-                      {r.label}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-slate-900 dark:text-slate-100">
-                      {formatNumber(r.value)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Column summary */}
+      <div className="rounded-xl border bg-white p-4 shadow-sm border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              Column summary
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Quick “shape” of your dataset (types, missing, distinct).
+            </div>
           </div>
         </div>
-      )}
+
+        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+          {colSummary.map((c) => (
+            <div
+              key={c.col}
+              className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {c.col}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    <Chip>{c.kind}</Chip>
+                    <Chip>{c.distinct.toLocaleString()} distinct</Chip>
+                    <Chip>{c.missing.toLocaleString()} missing</Chip>
+                  </div>
+                </div>
+                <div className="text-right text-xs text-slate-500 dark:text-slate-400">
+                  {(c.completeness * 100).toFixed(0)}%
+                </div>
+              </div>
+
+              {/* completeness bar */}
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-slate-900 dark:bg-slate-100"
+                  style={{ width: `${Math.round(c.completeness * 100)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
