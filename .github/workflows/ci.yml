@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  quality:
-    name: Lint, test, and build
+  frontend:
+    name: Frontend lint, test, and build
     runs-on: ubuntu-latest
 
     steps:
@@ -34,3 +34,25 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  backend:
+    name: Backend test and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore backend dependencies
+        run: dotnet restore server/AnalyticsDashboard.Api.Tests/AnalyticsDashboard.Api.Tests.csproj
+
+      - name: Test backend
+        run: dotnet test server/AnalyticsDashboard.Api.Tests/AnalyticsDashboard.Api.Tests.csproj --no-restore --configuration Release
+
+      - name: Build backend
+        run: dotnet build server/AnalyticsDashboard.Api/AnalyticsDashboard.Api.csproj --no-restore --configuration Release
