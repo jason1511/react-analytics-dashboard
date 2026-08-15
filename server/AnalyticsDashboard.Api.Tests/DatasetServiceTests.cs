@@ -2,6 +2,7 @@ using AnalyticsDashboard.Api.Contracts.Datasets;
 using AnalyticsDashboard.Api.Data;
 using AnalyticsDashboard.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Xunit;
 
 namespace AnalyticsDashboard.Api.Tests;
 
