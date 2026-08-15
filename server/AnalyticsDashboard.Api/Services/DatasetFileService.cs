@@ -18,6 +18,7 @@ public sealed class DatasetFileService(
     ILogger<DatasetFileService> logger)
 {
     public async Task<DatasetResponse> UploadAsync(
+        Guid ownerId,
         string? requestedName,
         IFormFile file,
         CancellationToken cancellationToken = default)
@@ -43,7 +44,8 @@ public sealed class DatasetFileService(
             ColumnCount = inspection.ColumnCount,
             SizeBytes = file.Length,
             CreatedAt = now,
-            UpdatedAt = now
+            UpdatedAt = now,
+            OwnerId = ownerId
         };
 
         try
@@ -61,12 +63,15 @@ public sealed class DatasetFileService(
     }
 
     public async Task<DatasetDownload?> OpenAsync(
+        Guid ownerId,
         Guid id,
         CancellationToken cancellationToken = default)
     {
         var dataset = await database.Datasets
             .AsNoTracking()
-            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+            .SingleOrDefaultAsync(
+                item => item.Id == id && item.OwnerId == ownerId,
+                cancellationToken);
 
         if (dataset?.StorageKey is null)
         {
@@ -80,11 +85,14 @@ public sealed class DatasetFileService(
     }
 
     public async Task<bool> DeleteAsync(
+        Guid ownerId,
         Guid id,
         CancellationToken cancellationToken = default)
     {
         var dataset = await database.Datasets
-            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+            .SingleOrDefaultAsync(
+                item => item.Id == id && item.OwnerId == ownerId,
+                cancellationToken);
 
         if (dataset is null)
         {

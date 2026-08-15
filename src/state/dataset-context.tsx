@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 
-import React, { createContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useMemo, useState } from "react";
 
 export type DataRow = Record<string, string>;
 
@@ -26,26 +26,35 @@ export function DatasetProvider({ children }: Readonly<{ children: React.ReactNo
   const [rows, setRows] = useState<DataRow[]>([]);
   const [fileName, setFileName] = useState<string | undefined>(undefined);
 
+  const updateDataset = useCallback((args: {
+    datasetId?: string;
+    columns: string[];
+    rows: DataRow[];
+    fileName?: string;
+  }) => {
+    setDatasetId(args.datasetId);
+    setColumns(args.columns);
+    setRows(args.rows);
+    setFileName(args.fileName);
+  }, []);
+
+  const clear = useCallback(() => {
+    setDatasetId(undefined);
+    setColumns([]);
+    setRows([]);
+    setFileName(undefined);
+  }, []);
+
   const value = useMemo<DatasetState>(
     () => ({
       datasetId,
       columns,
       rows,
       fileName,
-      setDataset: ({ datasetId, columns, rows, fileName }) => {
-        setDatasetId(datasetId);
-        setColumns(columns);
-        setRows(rows);
-        setFileName(fileName);
-      },
-      clear: () => {
-        setDatasetId(undefined);
-        setColumns([]);
-        setRows([]);
-        setFileName(undefined);
-      },
+      setDataset: updateDataset,
+      clear,
     }),
-    [datasetId, columns, rows, fileName]
+    [datasetId, columns, rows, fileName, updateDataset, clear]
   );
 
   return <DatasetContext.Provider value={value}>{children}</DatasetContext.Provider>;

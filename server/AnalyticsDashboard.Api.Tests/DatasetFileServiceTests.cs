@@ -12,6 +12,8 @@ namespace AnalyticsDashboard.Api.Tests;
 
 public sealed class DatasetFileServiceTests
 {
+    private static readonly Guid OwnerId = Guid.NewGuid();
+
     [Fact]
     public async Task UploadAsync_StoresCsvAndPersistsReadyDataset()
     {
@@ -22,8 +24,8 @@ public sealed class DatasetFileServiceTests
             "Region,Product,Revenue\nNorth,\"Bike, City\",1200\nSouth,Bike B,950\n",
             "sales.csv");
 
-        var created = await service.UploadAsync("  August Sales  ", file);
-        var download = await service.OpenAsync(created.Id);
+        var created = await service.UploadAsync(OwnerId, "  August Sales  ", file);
+        var download = await service.OpenAsync(OwnerId, created.Id);
 
         Assert.Equal("August Sales", created.Name);
         Assert.Equal("Ready", created.Status);
@@ -44,7 +46,7 @@ public sealed class DatasetFileServiceTests
         var file = CreateFile("Region,region\nNorth,South\n", "duplicate.csv");
 
         await Assert.ThrowsAsync<InvalidDataException>(() =>
-            service.UploadAsync(null, file));
+            service.UploadAsync(OwnerId, null, file));
 
         Assert.Empty(storage.Files);
         Assert.Empty(database.Datasets);
@@ -56,15 +58,35 @@ public sealed class DatasetFileServiceTests
         await using var database = CreateDatabase();
         var storage = new MemoryDatasetFileStorage();
         var service = CreateService(database, storage);
-        var created = await service.UploadAsync(
+        var created = await service.UploadAsync(OwnerId,
             null,
             CreateFile("Region,Revenue\nNorth,1200\n", "sales.csv"));
 
-        var deleted = await service.DeleteAsync(created.Id);
+        var deleted = await service.DeleteAsync(OwnerId, created.Id);
 
         Assert.True(deleted);
         Assert.Empty(storage.Files);
         Assert.Empty(database.Datasets);
+    }
+
+    [Fact]
+    public async Task OpenAndDeleteAsync_DoNotExposeAnotherUsersFile()
+    {
+        await using var database = CreateDatabase();
+        var storage = new MemoryDatasetFileStorage();
+        var service = CreateService(database, storage);
+        var created = await service.UploadAsync(
+            Guid.NewGuid(),
+            null,
+            CreateFile("Region,Revenue\nNorth,1200\n", "private.csv"));
+
+        var download = await service.OpenAsync(OwnerId, created.Id);
+        var deleted = await service.DeleteAsync(OwnerId, created.Id);
+
+        Assert.Null(download);
+        Assert.False(deleted);
+        Assert.Single(storage.Files);
+        Assert.Single(database.Datasets);
     }
 
     private static DatasetFileService CreateService(

@@ -7,6 +7,7 @@ public sealed class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> opti
     : DbContext(options)
 {
     public DbSet<Dataset> Datasets => Set<Dataset>();
+    public DbSet<AppUser> Users => Set<AppUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,7 +37,34 @@ public sealed class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> opti
         dataset.Property(item => item.SizeBytes).HasColumnName("size_bytes");
         dataset.Property(item => item.CreatedAt).HasColumnName("created_at");
         dataset.Property(item => item.UpdatedAt).HasColumnName("updated_at");
+        dataset.Property(item => item.OwnerId).HasColumnName("owner_id");
+        dataset.HasOne(item => item.Owner)
+            .WithMany(user => user.Datasets)
+            .HasForeignKey(item => item.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
+        dataset.HasIndex(item => new { item.OwnerId, item.CreatedAt })
+            .HasDatabaseName("ix_datasets_owner_id_created_at");
         dataset.HasIndex(item => item.CreatedAt)
             .HasDatabaseName("ix_datasets_created_at");
+
+        var user = modelBuilder.Entity<AppUser>();
+        user.ToTable("app_users");
+        user.HasKey(item => item.Id);
+        user.Property(item => item.Id).HasColumnName("id");
+        user.Property(item => item.Email)
+            .HasColumnName("email")
+            .HasMaxLength(320)
+            .IsRequired();
+        user.Property(item => item.NormalizedEmail)
+            .HasColumnName("normalized_email")
+            .HasMaxLength(320)
+            .IsRequired();
+        user.Property(item => item.PasswordHash)
+            .HasColumnName("password_hash")
+            .IsRequired();
+        user.Property(item => item.CreatedAt).HasColumnName("created_at");
+        user.HasIndex(item => item.NormalizedEmail)
+            .IsUnique()
+            .HasDatabaseName("ux_app_users_normalized_email");
     }
 }

@@ -1,11 +1,14 @@
 using AnalyticsDashboard.Api.Contracts;
+using AnalyticsDashboard.Api.Auth;
 using AnalyticsDashboard.Api.Contracts.Datasets;
 using AnalyticsDashboard.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AnalyticsDashboard.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/datasets")]
 public sealed class DatasetsController(
     DatasetService datasets,
@@ -18,7 +21,7 @@ public sealed class DatasetsController(
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await datasets.ListAsync(page, pageSize, cancellationToken));
+        return Ok(await datasets.ListAsync(User.GetUserId(), page, pageSize, cancellationToken));
     }
 
     [HttpGet("{id:guid}")]
@@ -28,7 +31,7 @@ public sealed class DatasetsController(
         Guid id,
         CancellationToken cancellationToken)
     {
-        var dataset = await datasets.GetAsync(id, cancellationToken);
+        var dataset = await datasets.GetAsync(User.GetUserId(), id, cancellationToken);
         return dataset is null ? NotFound() : Ok(dataset);
     }
 
@@ -39,7 +42,7 @@ public sealed class DatasetsController(
         CreateDatasetRequest request,
         CancellationToken cancellationToken)
     {
-        var dataset = await datasets.CreateAsync(request, cancellationToken);
+        var dataset = await datasets.CreateAsync(User.GetUserId(), request, cancellationToken);
         return CreatedAtAction(nameof(Get), new { id = dataset.Id }, dataset);
     }
 
@@ -55,6 +58,7 @@ public sealed class DatasetsController(
         try
         {
             var dataset = await files.UploadAsync(
+                User.GetUserId(),
                 request.Name,
                 request.File,
                 cancellationToken);
@@ -73,7 +77,7 @@ public sealed class DatasetsController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Content(Guid id, CancellationToken cancellationToken)
     {
-        var dataset = await files.OpenAsync(id, cancellationToken);
+        var dataset = await files.OpenAsync(User.GetUserId(), id, cancellationToken);
         return dataset is null
             ? NotFound()
             : File(dataset.Content, "text/csv; charset=utf-8", dataset.FileName);
@@ -87,7 +91,8 @@ public sealed class DatasetsController(
         RenameDatasetRequest request,
         CancellationToken cancellationToken)
     {
-        var dataset = await datasets.RenameAsync(id, request, cancellationToken);
+        var dataset = await datasets.RenameAsync(
+            User.GetUserId(), id, request, cancellationToken);
         return dataset is null ? NotFound() : Ok(dataset);
     }
 
@@ -96,7 +101,7 @@ public sealed class DatasetsController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        return await files.DeleteAsync(id, cancellationToken)
+        return await files.DeleteAsync(User.GetUserId(), id, cancellationToken)
             ? NoContent()
             : NotFound();
     }

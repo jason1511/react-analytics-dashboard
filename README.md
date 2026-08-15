@@ -36,6 +36,8 @@ aggregation, and chart calculations remain client-side for fast feedback.
 - Extract column headers and row data
 - Handle parsing errors and invalid input
 - Reopen or delete previously uploaded datasets
+- Register and sign in with a private account
+- Restrict every dataset operation to its owner
 - Store the active dataset in shared application state
 - Navigate between upload, dashboard, and exploration views
 
@@ -112,6 +114,8 @@ The dashboard helps users evaluate dataset quality through:
 | Route | Purpose |
 |---|---|
 | `/datasets` | View, reopen, and delete persistent datasets |
+| `/login` | Sign in to a dataset account |
+| `/register` | Create a private dataset account |
 | `/upload` | Upload and parse a CSV dataset |
 | `/dashboard` | View KPIs, quality metrics, aggregations, and charts |
 | `/explore` | Search, filter, and inspect dataset records |
@@ -165,6 +169,9 @@ The root route redirects to `/datasets`.
 React upload
    |
    v
+JWT-authenticated request
+   |
+   v
 ASP.NET Core API
    |
    v
@@ -204,8 +211,8 @@ The application separates responsibilities across:
 When a user uploads a CSV file:
 
 1. PapaParse validates and previews the selected file in React.
-2. The API validates the file again and inspects its rows and columns.
-3. PostgreSQL stores dataset metadata and the storage layer saves the CSV.
+2. The API authenticates the user, validates the file again, and inspects its rows and columns.
+3. PostgreSQL stores owner-scoped metadata and the storage layer saves the CSV.
 4. The active dataset is placed in shared React state.
 5. The dashboard samples values to identify numeric columns.
 6. Missing values, completeness, grouping, and aggregations are calculated.
@@ -263,6 +270,8 @@ The exact structure may evolve as features are added.
 
 - Node.js
 - npm
+- .NET 8 SDK
+- PostgreSQL 16 (or Docker)
 
 ### Installation
 
@@ -279,7 +288,19 @@ Install dependencies:
 npm install
 ```
 
-Start the development server:
+Copy `.env.example` values into your local environment. Set a unique database password and a
+random JWT signing key of at least 32 bytes; never commit real credentials.
+
+Start PostgreSQL, then the API:
+
+```bash
+POSTGRES_PASSWORD=your-local-password docker compose up -d
+export ConnectionStrings__AnalyticsDatabase='Host=localhost;Port=5432;Database=analytics_dashboard;Username=analytics;Password=your-local-password'
+export Jwt__SigningKey='replace-with-a-long-random-development-key'
+dotnet run --project server/AnalyticsDashboard.Api
+```
+
+Start the frontend in a second terminal:
 
 ```bash
 npm run dev
@@ -333,8 +354,9 @@ The project can be deployed to static hosting platforms such as:
 ## Privacy
 
 Uploaded CSV data is stored by the configured application server and processed in the browser
-when opened. The current version does not yet provide user accounts, so it should only be
-deployed in a trusted demo environment until authentication and per-user ownership are added.
+when opened. Accounts use hashed passwords and short-lived signed access tokens. Dataset list,
+download, rename, and delete queries all require the authenticated owner's identifier. Existing
+anonymous records from older versions remain unowned and are not exposed to any account.
 
 ## Engineering Decisions
 
@@ -371,7 +393,7 @@ Charts, KPI cards, navigation, layouts, and empty states are separated into reus
 
 - Designed primarily for small and moderate datasets
 - CSV only
-- No persistent user accounts
+- No password-reset or email-verification flow yet
 - No collaborative dashboards
 - No scheduled data refresh
 - Type detection is heuristic rather than schema-driven
@@ -389,7 +411,7 @@ Potential future improvements include:
 - More advanced descriptive statistics
 - Column renaming and data cleaning
 - Larger-file processing with Web Workers
-- Authentication and per-user dataset ownership
+- Refresh tokens and password-reset email flows
 - Object storage for production deployments
 - Accessibility improvements
 - Deployment preview and screenshots
@@ -413,6 +435,7 @@ This project strengthened my experience in:
 - ASP.NET Core REST API design
 - PostgreSQL persistence and Entity Framework migrations
 - Multipart upload handling and secure file storage
+- JWT authentication, password hashing, and ownership isolation
 - Frontend and backend continuous integration
 
 ## Author

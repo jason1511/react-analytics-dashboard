@@ -9,6 +9,7 @@ namespace AnalyticsDashboard.Api.Services;
 public sealed class DatasetService(AnalyticsDbContext database, TimeProvider timeProvider)
 {
     public async Task<PagedResponse<DatasetResponse>> ListAsync(
+        Guid ownerId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -16,7 +17,9 @@ public sealed class DatasetService(AnalyticsDbContext database, TimeProvider tim
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
-        var query = database.Datasets.AsNoTracking();
+        var query = database.Datasets
+            .AsNoTracking()
+            .Where(dataset => dataset.OwnerId == ownerId);
         var totalItems = await query.CountAsync(cancellationToken);
         var entities = await query
             .OrderByDescending(dataset => dataset.CreatedAt)
@@ -34,17 +37,21 @@ public sealed class DatasetService(AnalyticsDbContext database, TimeProvider tim
     }
 
     public async Task<DatasetResponse?> GetAsync(
+        Guid ownerId,
         Guid id,
         CancellationToken cancellationToken = default)
     {
         var dataset = await database.Datasets
             .AsNoTracking()
-            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+            .SingleOrDefaultAsync(
+                item => item.Id == id && item.OwnerId == ownerId,
+                cancellationToken);
 
         return dataset is null ? null : DatasetResponse.FromEntity(dataset);
     }
 
     public async Task<DatasetResponse> CreateAsync(
+        Guid ownerId,
         CreateDatasetRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -57,7 +64,8 @@ public sealed class DatasetService(AnalyticsDbContext database, TimeProvider tim
             SizeBytes = request.SizeBytes,
             Status = DatasetStatus.Pending,
             CreatedAt = now,
-            UpdatedAt = now
+            UpdatedAt = now,
+            OwnerId = ownerId
         };
 
         database.Datasets.Add(dataset);
@@ -67,12 +75,15 @@ public sealed class DatasetService(AnalyticsDbContext database, TimeProvider tim
     }
 
     public async Task<DatasetResponse?> RenameAsync(
+        Guid ownerId,
         Guid id,
         RenameDatasetRequest request,
         CancellationToken cancellationToken = default)
     {
         var dataset = await database.Datasets
-            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+            .SingleOrDefaultAsync(
+                item => item.Id == id && item.OwnerId == ownerId,
+                cancellationToken);
 
         if (dataset is null)
         {

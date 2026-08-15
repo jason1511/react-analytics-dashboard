@@ -1,10 +1,13 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../state/use-auth";
 import { useTheme } from "../state/use-theme";
 
 const linkBase = "block rounded-lg px-4 py-2 text-sm font-medium transition";
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { isDark, toggle } = useTheme();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <div className="flex h-full flex-col p-4">
@@ -38,8 +41,10 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
 
-      {/* Theme toggle */}
       <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-800">
+        <div className="mb-3 truncate px-1 text-xs text-slate-500 dark:text-slate-400" title={user?.email}>
+          Signed in as <span className="font-medium text-slate-700 dark:text-slate-200">{user?.email}</span>
+        </div>
         <button
           onClick={toggle}
           className="
@@ -53,6 +58,16 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         >
           <span>{isDark ? "Dark mode" : "Light mode"}</span>
           <span className="text-base">{isDark ? "🌙" : "☀️"}</span>
+        </button>
+        <button
+          onClick={() => {
+            logout();
+            onNavigate?.();
+            navigate("/login", { replace: true });
+          }}
+          className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        >
+          Sign out
         </button>
       </div>
     </div>

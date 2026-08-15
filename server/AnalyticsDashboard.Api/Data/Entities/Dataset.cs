@@ -12,6 +12,8 @@ public sealed class Dataset
     public long SizeBytes { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+    public Guid? OwnerId { get; set; }
+    public AppUser? Owner { get; set; }
 }
 
 public enum DatasetStatus
