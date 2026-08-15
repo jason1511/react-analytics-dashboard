@@ -2,120 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useDataset } from "../state/use-dataset";
 import BarCountChart from "../components/charts/BarCountChart";
 import EmptyState from "../components/EmptyState";
+import {
+  columnStats,
+  detectNumericColumns,
+  formatNumber,
+  getCategoryCounts,
+  pickDefaultGroupBy,
+  sumByGroup,
+} from "../lib/analytics";
 
-/* ---------- helpers ---------- */
-
-function getCategoryCounts(rows: Record<string, string>[], column: string) {
-  const map = new Map<string, number>();
-  for (const r of rows) {
-    const key = (r[column] || "—").trim() || "—";
-    map.set(key, (map.get(key) ?? 0) + 1);
-  }
-  return Array.from(map.entries())
-    .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 15);
-}
-
-function pickDefaultGroupBy(columns: string[], rows: Record<string, string>[]) {
-  if (!columns.length || !rows.length) return columns[0] ?? "";
-
-  const candidates = columns
-    .map((c) => {
-      const set = new Set<string>();
-      let nonEmpty = 0;
-
-      for (const r of rows) {
-        const v = (r[c] ?? "").trim();
-        if (!v) continue;
-        nonEmpty++;
-        set.add(v);
-        if (set.size > 50) break;
-      }
-
-      const distinct = set.size;
-      const distinctRatio = nonEmpty ? distinct / nonEmpty : 1;
-
-      const name = c.toLowerCase();
-      const looksLikeDateOrId =
-        name.includes("date") ||
-        name.includes("time") ||
-        name.includes("id") ||
-        name.includes("timestamp");
-
-      let score = 0;
-      if (distinct >= 2) score += 1;
-      if (distinct >= 5 && distinct <= 20) score += 3;
-      if (distinctRatio > 0.9) score -= 3;
-      if (looksLikeDateOrId) score -= 2;
-
-      return { col: c, score, distinct, distinctRatio };
-    })
-    .sort((a, b) => b.score - a.score);
-
-  return candidates[0]?.col ?? columns[0];
-}
-
-function isNumericLike(v: string) {
-  const s = (v ?? "").trim();
-  if (!s) return false;
-  const cleaned = s.replace(/[$£€,\s]/g, "");
-  return cleaned !== "" && !Number.isNaN(Number(cleaned));
-}
-
-function toNumberSafe(v: string) {
-  const cleaned = (v ?? "").trim().replace(/[$£€,\s]/g, "");
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function detectNumericColumns(
-  columns: string[],
-  rows: Record<string, string>[],
-  sampleSize = 80
-) {
-  const sample = rows.slice(0, sampleSize);
-  const numeric: string[] = [];
-
-  for (const c of columns) {
-    let seen = 0;
-    let ok = 0;
-
-    for (const r of sample) {
-      const v = r[c] ?? "";
-      if (v.trim() === "") continue;
-      seen++;
-      if (isNumericLike(v)) ok++;
-    }
-
-    if (seen > 0 && ok / seen >= 0.8) numeric.push(c);
-  }
-
-  return numeric;
-}
-
-function sumByGroup(
-  rows: Record<string, string>[],
-  groupCol: string,
-  valueCol: string
-) {
-  const map = new Map<string, number>();
-  for (const r of rows) {
-    const key = (r[groupCol] || "—").trim() || "—";
-    const val = toNumberSafe(r[valueCol] ?? "");
-    map.set(key, (map.get(key) ?? 0) + val);
-  }
-  return Array.from(map.entries())
-    .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 15);
-}
-
-function formatNumber(n: number) {
-  if (Math.abs(n) >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (Math.abs(n) >= 1_000) return (n / 1_000).toFixed(1) + "k";
-  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
+/* ---------- presentational helpers ---------- */
 
 function KpiCard({
   label,
@@ -145,43 +41,6 @@ function Chip({ children }: { children: React.ReactNode }) {
       {children}
     </span>
   );
-}
-
-function columnStats(columns: string[], rows: Record<string, string>[]) {
-  const N = rows.length || 0;
-
-  return columns.map((c) => {
-    let missing = 0;
-    const set = new Set<string>();
-
-    // sample-ish: we can scan all rows; still fine for moderate CSVs
-    for (const r of rows) {
-      const v = (r[c] ?? "").trim();
-      if (!v) missing++;
-      else set.add(v);
-    }
-
-    // type guess by sampling a bit
-    const sample = rows.slice(0, Math.min(80, rows.length));
-    let seen = 0;
-    let numericOk = 0;
-    for (const r of sample) {
-      const v = (r[c] ?? "").trim();
-      if (!v) continue;
-      seen++;
-      if (isNumericLike(v)) numericOk++;
-    }
-    const kind =
-      seen > 0 && numericOk / seen >= 0.8 ? "numeric" : "categorical";
-
-    return {
-      col: c,
-      kind,
-      distinct: set.size,
-      missing,
-      completeness: N ? (N - missing) / N : 0,
-    };
-  });
 }
 
 /* ---------- page ---------- */
