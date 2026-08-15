@@ -1,83 +1,68 @@
 import { useRef, useState } from "react";
-import Papa from "papaparse";
+import { useNavigate } from "react-router-dom";
+import { uploadDataset } from "../api/datasets";
+import { parseCsvFile } from "../lib/csv";
 import { useDataset } from "../state/use-dataset";
 
 export default function UploadPage() {
-  const { setDataset, fileName, rows, columns, clear } = useDataset();
+  const { setDataset } = useDataset();
+  const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function parseFile(file: File) {
+  async function handleFile(file: File) {
     setError(null);
+    setIsUploading(true);
 
-    Papa.parse<Record<string, unknown>>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const data = (results.data || []).filter(Boolean) as Record<string, unknown>[];
-        const cols =
-          results.meta.fields?.filter((f): f is string => typeof f === "string") ?? [];
-
-        if (cols.length === 0) {
-          setError("No columns detected. Make sure the first row is the header.");
-          return;
-        }
-
-        // Convert everything to strings for now (simple & safe)
-        const stringRows = data.map((r) => {
-          const obj: Record<string, string> = {};
-          for (const c of cols) obj[c] = r?.[c] == null ? "" : String(r[c]);
-          return obj;
-        });
-
-        setDataset({ columns: cols, rows: stringRows, fileName: file.name });
-      },
-      error: (err) => setError(err.message),
-    });
+    try {
+      const parsed = await parseCsvFile(file);
+      const saved = await uploadDataset(file);
+      setDataset({
+        datasetId: saved.id,
+        columns: parsed.columns,
+        rows: parsed.rows,
+        fileName: saved.originalFileName,
+      });
+      navigate("/dashboard");
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "The CSV file could not be uploaded."
+      );
+    } finally {
+      setIsUploading(false);
+    }
   }
 
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault();
+  function onDrop(event: React.DragEvent) {
+    event.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) parseFile(file);
+    const file = event.dataTransfer.files?.[0];
+    if (file && !isUploading) void handleFile(file);
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Upload Data
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Upload a CSV with headers. We’ll use it across Dashboard and Explore.
+            Upload a CSV once, then reopen it later from Datasets.
           </p>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            className="rounded-lg border px-3 py-2 text-sm
-                       bg-white hover:bg-slate-50
-                       dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200
-                       dark:hover:bg-slate-800"
-            onClick={() => inputRef.current?.click()}
-          >
-            Choose CSV
-          </button>
-
-          <button
-            className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50
-                       bg-white hover:bg-slate-50
-                       dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200
-                       dark:hover:bg-slate-800"
-            onClick={clear}
-            disabled={rows.length === 0}
-          >
-            Clear
-          </button>
-        </div>
+        <button
+          className="rounded-lg border bg-white px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          onClick={() => inputRef.current?.click()}
+          disabled={isUploading}
+        >
+          {isUploading ? "Uploading…" : "Choose CSV"}
+        </button>
       </div>
 
       <input
@@ -85,55 +70,44 @@ export default function UploadPage() {
         type="file"
         accept=".csv,text/csv"
         className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) parseFile(file);
+        disabled={isUploading}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void handleFile(file);
+          event.currentTarget.value = "";
         }}
       />
 
       <div
-        onDragEnter={(e) => {
-          e.preventDefault();
-          setIsDragging(true);
+        onDragEnter={(event) => {
+          event.preventDefault();
+          if (!isUploading) setIsDragging(true);
         }}
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={(event) => event.preventDefault()}
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
         className={[
-          "rounded-2xl border p-6 shadow-sm transition",
-          "bg-white dark:bg-slate-900 dark:border-slate-800",
+          "rounded-2xl border bg-white p-6 shadow-sm transition dark:border-slate-800 dark:bg-slate-900",
           isDragging
             ? "ring-2 ring-blue-500"
             : "hover:border-slate-300 dark:hover:border-slate-700",
+          isUploading ? "cursor-wait opacity-75" : "",
         ].join(" ")}
       >
-        <div
-          className="rounded-xl border-2 border-dashed p-10 text-center
-                     border-slate-300 dark:border-slate-700"
-        >
-          {/* Supported format box */}
-          <div
-            className="mx-auto mb-6 max-w-3xl rounded-xl p-4 text-sm
-                       bg-slate-50 text-slate-700
-                       dark:bg-slate-800 dark:text-slate-200"
-          >
+        <div className="rounded-xl border-2 border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
+          <div className="mx-auto mb-6 max-w-3xl rounded-xl bg-slate-50 p-4 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
             <div className="font-medium text-slate-900 dark:text-slate-100">
               Supported format
             </div>
-
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-600 dark:text-slate-300">
-              <li>CSV files with a header row (first row = column names)</li>
-              <li>Comma-separated values (UTF-8 recommended)</li>
-              <li>Example columns: Date, Region, Category, Units, Revenue</li>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-left text-slate-600 dark:text-slate-300">
+              <li>CSV with a header row and unique column names</li>
+              <li>Maximum file size: 10 MB</li>
+              <li>UTF-8 recommended; quoted commas are supported</li>
             </ul>
-
             <div className="mt-3">
-              <span className="text-slate-600 dark:text-slate-300">
-                Need a sample?
-              </span>{" "}
+              Need a sample?{" "}
               <a
-                className="font-medium text-slate-900 underline hover:text-slate-700
-                           dark:text-slate-100 dark:hover:text-slate-300"
+                className="font-medium text-slate-900 underline hover:text-slate-700 dark:text-slate-100 dark:hover:text-slate-300"
                 href="/sales_mock.csv"
                 download
               >
@@ -143,47 +117,18 @@ export default function UploadPage() {
           </div>
 
           <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-            Drop CSV here
+            {isUploading ? "Saving and analysing CSV…" : "Drop CSV here"}
           </div>
           <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            or click “Choose CSV”
+            {isUploading ? "Please keep this page open" : "or click Choose CSV"}
           </div>
         </div>
 
         {error && (
-          <div
-            className="mt-4 rounded-lg border p-3 text-sm
-                       border-red-300 bg-red-50 text-red-700
-                       dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
-          >
+          <div className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
             {error}
           </div>
         )}
-
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
-            <div className="text-xs text-slate-500 dark:text-slate-400">File</div>
-            <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-              {fileName ?? "—"}
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
-            <div className="text-xs text-slate-500 dark:text-slate-400">Rows</div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              {rows.length}
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              Columns
-            </div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              {columns.length}
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

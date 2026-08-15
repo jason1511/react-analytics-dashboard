@@ -23,6 +23,9 @@ public sealed class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> opti
             .HasColumnName("original_file_name")
             .HasMaxLength(255)
             .IsRequired();
+        dataset.Property(item => item.StorageKey)
+            .HasColumnName("storage_key")
+            .HasMaxLength(80);
         dataset.Property(item => item.Status)
             .HasColumnName("status")
             .HasConversion<string>()

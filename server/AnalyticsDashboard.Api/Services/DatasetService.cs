@@ -86,17 +86,6 @@ public sealed class DatasetService(AnalyticsDbContext database, TimeProvider tim
         return DatasetResponse.FromEntity(dataset);
     }
 
-    public async Task<bool> DeleteAsync(
-        Guid id,
-        CancellationToken cancellationToken = default)
-    {
-        var deleted = await database.Datasets
-            .Where(item => item.Id == id)
-            .ExecuteDeleteAsync(cancellationToken);
-
-        return deleted > 0;
-    }
-
     private static string NormalizeName(string name)
     {
         var normalized = name.Trim();

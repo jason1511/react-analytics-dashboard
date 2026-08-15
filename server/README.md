@@ -33,8 +33,10 @@ The API applies pending migrations on startup. In development, Swagger is availa
 | `GET` | `/api/datasets` | List dataset records with pagination |
 | `GET` | `/api/datasets/{id}` | Get one dataset record |
 | `POST` | `/api/datasets` | Create dataset metadata |
+| `POST` | `/api/datasets/upload` | Validate, inspect, and store a CSV dataset |
+| `GET` | `/api/datasets/{id}/content` | Reopen the stored CSV |
 | `PATCH` | `/api/datasets/{id}/name` | Rename a dataset |
-| `DELETE` | `/api/datasets/{id}` | Delete a dataset record |
+| `DELETE` | `/api/datasets/{id}` | Delete dataset metadata and its stored CSV |
 
-This first backend slice stores dataset metadata. CSV file storage, parsing jobs, and frontend
-integration are the next milestones.
+Uploaded files are limited to 10 MB, assigned generated storage keys, and kept outside the web
+root. The React application uses `VITE_API_URL` to upload files and reopen them after refresh.

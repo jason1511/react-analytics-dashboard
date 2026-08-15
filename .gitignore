@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+server/**/bin
+server/**/obj
+server/AnalyticsDashboard.Api/App_Data
 
 # Editor directories and files
 .vscode/*

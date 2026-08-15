@@ -5,6 +5,7 @@ public sealed class Dataset
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string OriginalFileName { get; set; } = string.Empty;
+    public string? StorageKey { get; set; }
     public DatasetStatus Status { get; set; } = DatasetStatus.Pending;
     public int? RowCount { get; set; }
     public int? ColumnCount { get; set; }

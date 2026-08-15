@@ -16,6 +16,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       {/* Navigation */}
       <nav className="flex-1 space-y-2">
         {[
+          { to: "/datasets", label: "Datasets" },
           { to: "/dashboard", label: "Dashboard" },
           { to: "/upload", label: "Upload" },
           { to: "/explore", label: "Explore" },

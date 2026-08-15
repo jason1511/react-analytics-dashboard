@@ -2,7 +2,10 @@
 
 A responsive browser-based analytics application for uploading, exploring, validating, and visualising CSV datasets.
 
-The project was built with **React**, **TypeScript**, **Vite**, **Tailwind CSS**, **PapaParse**, and **Recharts**. It focuses on transforming raw tabular data into practical summaries, quality indicators, filters, and interactive charts without requiring a backend.
+The project combines a **React** and **TypeScript** frontend with an **ASP.NET Core 8** API,
+**PostgreSQL**, and **Entity Framework Core**. It transforms raw tabular data into practical
+summaries, quality indicators, filters, and interactive charts while keeping uploaded datasets
+available between sessions.
 
 ## Overview
 
@@ -20,16 +23,19 @@ It automatically:
 - Supports search and multi-column filtering
 - Provides a responsive light and dark interface
 
-All dataset processing is performed client-side.
+Uploaded CSV files and their metadata are persisted by the API. Interactive filtering,
+aggregation, and chart calculations remain client-side for fast feedback.
 
 ## Key Features
 
 ### CSV Upload and Parsing
 
-- Upload CSV datasets directly from the browser
+- Upload CSV datasets through the ASP.NET Core API
 - Parse files with PapaParse
+- Validate CSV structure on both the client and server
 - Extract column headers and row data
 - Handle parsing errors and invalid input
+- Reopen or delete previously uploaded datasets
 - Store the active dataset in shared application state
 - Navigate between upload, dashboard, and exploration views
 
@@ -105,11 +111,12 @@ The dashboard helps users evaluate dataset quality through:
 
 | Route | Purpose |
 |---|---|
+| `/datasets` | View, reopen, and delete persistent datasets |
 | `/upload` | Upload and parse a CSV dataset |
 | `/dashboard` | View KPIs, quality metrics, aggregations, and charts |
 | `/explore` | Search, filter, and inspect dataset records |
 
-The root route redirects to `/dashboard`.
+The root route redirects to `/datasets`.
 
 ## Tech Stack
 
@@ -136,6 +143,15 @@ The root route redirects to `/dashboard`.
 - Recharts
 - Reusable chart components
 
+### Backend
+
+- ASP.NET Core 8 Web API
+- PostgreSQL
+- Entity Framework Core migrations
+- CsvHelper server-side validation
+- Local file-storage abstraction
+- Swagger and health checks
+
 ### Development Tooling
 
 - Vite
@@ -146,18 +162,23 @@ The root route redirects to `/dashboard`.
 ## Architecture
 
 ```text
-CSV file
+React upload
    |
    v
-PapaParse
+ASP.NET Core API
    |
    v
-Shared dataset state
+PostgreSQL metadata + CSV storage
    |
-   +-----------------------+
-   |                       |
-   v                       v
-Dashboard page         Explore page
+   v
+Datasets page
+   |
+   +-- reopen CSV --> shared dataset state
+                           |
+                 +---------+---------+
+                 |                   |
+                 v                   v
+            Dashboard page       Explore page
    |                       |
    +-- KPI calculations    +-- Search
    +-- Type detection      +-- Column filters
@@ -182,12 +203,12 @@ The application separates responsibilities across:
 
 When a user uploads a CSV file:
 
-1. PapaParse reads and parses the file.
-2. Column names and records are extracted.
-3. The dataset is stored in shared React state.
-4. The dashboard samples values to identify numeric columns.
-5. Missing values and completeness are calculated.
-6. A likely grouping column is selected.
+1. PapaParse validates and previews the selected file in React.
+2. The API validates the file again and inspects its rows and columns.
+3. PostgreSQL stores dataset metadata and the storage layer saves the CSV.
+4. The active dataset is placed in shared React state.
+5. The dashboard samples values to identify numeric columns.
+6. Missing values, completeness, grouping, and aggregations are calculated.
 7. Category counts and numeric sums are generated.
 8. Recharts renders the results.
 9. The same dataset becomes available in the exploration view.
@@ -311,17 +332,17 @@ The project can be deployed to static hosting platforms such as:
 
 ## Privacy
 
-Uploaded CSV data is processed in the browser.
-
-The current application does not require users to upload datasets to an external application server. Users should still avoid loading sensitive information on shared or untrusted devices.
+Uploaded CSV data is stored by the configured application server and processed in the browser
+when opened. The current version does not yet provide user accounts, so it should only be
+deployed in a trusted demo environment until authentication and per-user ownership are added.
 
 ## Engineering Decisions
 
-### Client-Side Processing
+### Hybrid Processing
 
-The project performs parsing, filtering, aggregation, and analysis in the browser.
-
-This keeps the architecture simple and provides immediate results without requiring a backend. It is best suited to small and moderate CSV datasets.
+The server owns persistence and validates every uploaded CSV. React performs interactive
+filtering, aggregation, and analysis after loading a selected dataset. This keeps the current
+experience responsive while the project remains focused on small and moderate datasets.
 
 ### Sample-Based Numeric Detection
 
@@ -351,11 +372,10 @@ Charts, KPI cards, navigation, layouts, and empty states are separated into reus
 - Designed primarily for small and moderate datasets
 - CSV only
 - No persistent user accounts
-- No server-side dataset storage
 - No collaborative dashboards
 - No scheduled data refresh
 - Type detection is heuristic rather than schema-driven
-- Automated test coverage can be expanded
+- Local file storage should be replaced with object storage for multi-instance deployment
 
 ## Planned Improvements
 
@@ -369,7 +389,8 @@ Potential future improvements include:
 - More advanced descriptive statistics
 - Column renaming and data cleaning
 - Larger-file processing with Web Workers
-- Automated unit and component tests
+- Authentication and per-user dataset ownership
+- Object storage for production deployments
 - Accessibility improvements
 - Deployment preview and screenshots
 
@@ -389,6 +410,10 @@ This project strengthened my experience in:
 - Responsive interface design
 - Performance-aware derived calculations
 - Error and empty-state handling
+- ASP.NET Core REST API design
+- PostgreSQL persistence and Entity Framework migrations
+- Multipart upload handling and secure file storage
+- Frontend and backend continuous integration
 
 ## Author
 

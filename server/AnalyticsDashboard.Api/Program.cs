@@ -1,5 +1,6 @@
 using AnalyticsDashboard.Api.Data;
 using AnalyticsDashboard.Api.Services;
+using AnalyticsDashboard.Api.Storage;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,11 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddDbContext<AnalyticsDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddScoped<DatasetService>();
+builder.Services.AddScoped<DatasetFileService>();
+builder.Services.AddSingleton<CsvInspector>();
+builder.Services.Configure<DatasetStorageOptions>(
+    builder.Configuration.GetSection(DatasetStorageOptions.SectionName));
+builder.Services.AddSingleton<IDatasetFileStorage, LocalDatasetFileStorage>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
