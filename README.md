@@ -23,8 +23,9 @@ It automatically:
 - Supports search and multi-column filtering
 - Provides a responsive light and dark interface
 
-Uploaded CSV files and their metadata are persisted by the API. Interactive filtering,
-aggregation, and chart calculations remain client-side for fast feedback.
+Signed-in users persist uploaded CSV files and metadata through the API. Guests can use the full
+analytics experience without creating an account; their files remain browser-only and are never
+sent to the server. Interactive filtering, aggregation, and chart calculations remain client-side.
 
 ## Key Features
 
@@ -36,7 +37,9 @@ aggregation, and chart calculations remain client-side for fast feedback.
 - Extract column headers and row data
 - Handle parsing errors and invalid input
 - Reopen or delete previously uploaded datasets
-- Register and sign in with a private account
+- Register with a unique username and sign in with a private account
+- Check username availability while registering
+- Continue as a guest with full analytics and no server-side saving
 - Restrict every dataset operation to its owner
 - Store the active dataset in shared application state
 - Navigate between upload, dashboard, and exploration views
@@ -154,6 +157,7 @@ The root route redirects to `/datasets`.
 - Entity Framework Core migrations
 - CsvHelper server-side validation
 - Local file-storage abstraction
+- S3-compatible production storage, including Cloudflare R2
 - Swagger and health checks
 
 ### Development Tooling
@@ -354,9 +358,14 @@ The project can be deployed to static hosting platforms such as:
 ## Privacy
 
 Uploaded CSV data is stored by the configured application server and processed in the browser
-when opened. Accounts use hashed passwords and short-lived signed access tokens. Dataset list,
-download, rename, and delete queries all require the authenticated owner's identifier. Existing
-anonymous records from older versions remain unowned and are not exposed to any account.
+when opened by a signed-in user. Accounts use hashed passwords and short-lived signed access
+tokens. Dataset list, download, rename, and delete queries all require the authenticated owner's
+identifier. In guest mode, CSV data stays in browser memory and is not uploaded or saved.
+Existing anonymous records from older versions remain unowned and are not exposed to any account.
+
+Production deployments can set `DatasetStorage__Provider=S3` and supply an S3-compatible endpoint,
+bucket, access key, and secret through environment variables. Local development keeps using the
+filesystem by default. Switching providers does not automatically migrate previously stored files.
 
 ## Engineering Decisions
 
@@ -393,11 +402,10 @@ Charts, KPI cards, navigation, layouts, and empty states are separated into reus
 
 - Designed primarily for small and moderate datasets
 - CSV only
-- No password-reset or email-verification flow yet
+- No password-reset or account-recovery flow yet
 - No collaborative dashboards
 - No scheduled data refresh
 - Type detection is heuristic rather than schema-driven
-- Local file storage should be replaced with object storage for multi-instance deployment
 
 ## Planned Improvements
 
@@ -411,8 +419,7 @@ Potential future improvements include:
 - More advanced descriptive statistics
 - Column renaming and data cleaning
 - Larger-file processing with Web Workers
-- Refresh tokens and password-reset email flows
-- Object storage for production deployments
+- Refresh tokens and account-recovery flows
 - Accessibility improvements
 - Deployment preview and screenshots
 
@@ -436,6 +443,7 @@ This project strengthened my experience in:
 - PostgreSQL persistence and Entity Framework migrations
 - Multipart upload handling and secure file storage
 - JWT authentication, password hashing, and ownership isolation
+- Guest-mode privacy and S3-compatible object storage
 - Frontend and backend continuous integration
 
 ## Author

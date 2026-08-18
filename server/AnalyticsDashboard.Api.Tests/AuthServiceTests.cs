@@ -19,28 +19,28 @@ public sealed class AuthServiceTests
         var service = CreateService(database);
 
         var registered = await service.RegisterAsync(
-            new RegisterRequest("  jason@example.com ", "correct horse battery staple"));
+            new RegisterRequest("  jason_leonard ", "correct horse battery staple"));
         var loggedIn = await service.LoginAsync(
-            new LoginRequest("JASON@example.com", "correct horse battery staple"));
+            new LoginRequest("JASON_LEONARD", "correct horse battery staple"));
 
         Assert.NotNull(registered);
         Assert.NotNull(loggedIn);
-        Assert.Equal("jason@example.com", registered.User.Email);
+        Assert.Equal("jason_leonard", registered.User.Username);
         Assert.Equal(registered.User.Id, loggedIn.User.Id);
         Assert.NotEmpty(loggedIn.AccessToken);
         Assert.DoesNotContain("correct horse", database.Users.Single().PasswordHash);
     }
 
     [Fact]
-    public async Task RegisterAsync_RejectsDuplicateEmailIgnoringCase()
+    public async Task RegisterAsync_RejectsDuplicateUsernameIgnoringCase()
     {
         await using var database = CreateDatabase();
         var service = CreateService(database);
         await service.RegisterAsync(
-            new RegisterRequest("jason@example.com", "correct horse battery staple"));
+            new RegisterRequest("jason", "correct horse battery staple"));
 
         var duplicate = await service.RegisterAsync(
-            new RegisterRequest("JASON@example.com", "another secure password"));
+            new RegisterRequest("JASON", "another secure password"));
 
         Assert.Null(duplicate);
         Assert.Single(database.Users);
@@ -52,12 +52,27 @@ public sealed class AuthServiceTests
         await using var database = CreateDatabase();
         var service = CreateService(database);
         await service.RegisterAsync(
-            new RegisterRequest("jason@example.com", "correct horse battery staple"));
+            new RegisterRequest("jason", "correct horse battery staple"));
 
         var response = await service.LoginAsync(
-            new LoginRequest("jason@example.com", "incorrect password"));
+            new LoginRequest("jason", "incorrect password"));
 
         Assert.Null(response);
+    }
+
+    [Fact]
+    public async Task IsUsernameAvailableAsync_ReflectsExistingUserIgnoringCase()
+    {
+        await using var database = CreateDatabase();
+        var service = CreateService(database);
+        await service.RegisterAsync(
+            new RegisterRequest("jason", "correct horse battery staple"));
+
+        var taken = await service.IsUsernameAvailableAsync("JASON");
+        var available = await service.IsUsernameAvailableAsync("leonard");
+
+        Assert.False(taken);
+        Assert.True(available);
     }
 
     private static AuthService CreateService(AnalyticsDbContext database)

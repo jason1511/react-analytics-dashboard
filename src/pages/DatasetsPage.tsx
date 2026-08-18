@@ -8,6 +8,7 @@ import {
 } from "../api/datasets";
 import { parseCsvText } from "../lib/csv";
 import { useDataset } from "../state/use-dataset";
+import { useAuth } from "../state/use-auth";
 
 function formatBytes(bytes: number) {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -24,6 +25,7 @@ function formatDate(value: string) {
 
 export default function DatasetsPage() {
   const { setDataset } = useDataset();
+  const { isGuest } = useAuth();
   const navigate = useNavigate();
   const [datasets, setDatasets] = useState<DatasetSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,8 +50,12 @@ export default function DatasetsPage() {
   }, []);
 
   useEffect(() => {
+    if (isGuest) {
+      setIsLoading(false);
+      return;
+    }
     void refresh();
-  }, [refresh]);
+  }, [refresh, isGuest]);
 
   async function openDataset(dataset: DatasetSummary) {
     setBusyId(dataset.id);
@@ -102,7 +108,9 @@ export default function DatasetsPage() {
             Datasets
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Reopen previously uploaded data or remove datasets you no longer need.
+            {isGuest
+              ? "Use the complete analytics demo without storing your data."
+              : "Reopen previously uploaded data or remove datasets you no longer need."}
           </p>
         </div>
         <Link
@@ -113,13 +121,25 @@ export default function DatasetsPage() {
         </Link>
       </div>
 
-      {error && (
+      {isGuest ? (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 dark:border-blue-500/30 dark:bg-blue-500/10">
+          <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+            Guest sessions do not save datasets
+          </h3>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            You can upload a CSV and use every dashboard and exploration feature, but the file stays in this browser session only.
+          </p>
+          <Link className="mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-slate-100 dark:text-slate-900" to="/upload">
+            Try the dashboard
+          </Link>
+        </div>
+      ) : error && (
         <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
           {error}
         </div>
       )}
 
-      {isLoading ? (
+      {!isGuest && (isLoading ? (
         <div className="rounded-xl border bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
           Loading datasets…
         </div>
@@ -202,7 +222,7 @@ export default function DatasetsPage() {
             );
           })}
         </div>
-      )}
+      ))}
     </div>
   );
 }

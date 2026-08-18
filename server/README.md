@@ -34,6 +34,7 @@ The API applies pending migrations on startup. In development, Swagger is availa
 | `GET` | `/health` | Application health check |
 | `POST` | `/api/auth/register` | Create an account and receive an access token |
 | `POST` | `/api/auth/login` | Sign in and receive an access token |
+| `GET` | `/api/auth/username-available` | Check whether a username is available |
 | `GET` | `/api/auth/me` | Restore the authenticated user |
 | `GET` | `/api/datasets` | List dataset records with pagination |
 | `GET` | `/api/datasets/{id}` | Get one dataset record |
@@ -46,3 +47,21 @@ The API applies pending migrations on startup. In development, Swagger is availa
 Uploaded files are limited to 10 MB, assigned generated storage keys, and kept outside the web
 root. Every dataset endpoint requires a bearer token and scopes queries to the authenticated
 owner. The React application uses `VITE_API_URL` to upload files and reopen them after refresh.
+
+## Production object storage
+
+Local development uses `DatasetStorage__Provider=Local`. For Cloudflare R2 or another
+S3-compatible service, configure these environment variables:
+
+```bash
+export DatasetStorage__Provider="S3"
+export DatasetStorage__S3__ServiceUrl="https://ACCOUNT_ID.r2.cloudflarestorage.com"
+export DatasetStorage__S3__BucketName="analytics-dashboard"
+export DatasetStorage__S3__AccessKeyId="your-access-key"
+export DatasetStorage__S3__SecretAccessKey="your-secret-key"
+export DatasetStorage__S3__Region="auto"
+```
+
+Keep the bucket private. The API performs authenticated reads and writes; the browser never
+receives object-storage credentials. Guest-mode uploads bypass the API entirely and remain in
+browser memory. Changing providers does not copy existing files between storage backends.

@@ -20,7 +20,7 @@ public sealed class AuthController(AuthService auth) : ControllerBase
     {
         var response = await auth.RegisterAsync(request, cancellationToken);
         return response is null
-            ? Conflict(new ProblemDetails { Title = "An account with that email already exists." })
+            ? Conflict(new ProblemDetails { Title = "That username is already taken." })
             : StatusCode(StatusCodes.Status201Created, response);
     }
 
@@ -34,8 +34,31 @@ public sealed class AuthController(AuthService auth) : ControllerBase
     {
         var response = await auth.LoginAsync(request, cancellationToken);
         return response is null
-            ? Unauthorized(new ProblemDetails { Title = "Email or password is incorrect." })
+            ? Unauthorized(new ProblemDetails { Title = "Username or password is incorrect." })
             : Ok(response);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("username-available")]
+    [ProducesResponseType<UsernameAvailabilityResponse>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<UsernameAvailabilityResponse>> UsernameAvailable(
+        [FromQuery] string username,
+        CancellationToken cancellationToken)
+    {
+        var candidate = username.Trim();
+        if (candidate.Length is < 3 or > 40 ||
+            !char.IsAsciiLetterOrDigit(candidate[0]) ||
+            candidate.Any(character =>
+                !char.IsAsciiLetterOrDigit(character) &&
+                character != '.' &&
+                character != '_' &&
+                character != '-'))
+        {
+            return Ok(new UsernameAvailabilityResponse(false));
+        }
+
+        var available = await auth.IsUsernameAvailableAsync(candidate, cancellationToken);
+        return Ok(new UsernameAvailabilityResponse(available));
     }
 
     [Authorize]

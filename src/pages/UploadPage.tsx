@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { uploadDataset } from "../api/datasets";
 import { parseCsvFile } from "../lib/csv";
 import { useDataset } from "../state/use-dataset";
+import { useAuth } from "../state/use-auth";
 
 export default function UploadPage() {
   const { setDataset } = useDataset();
+  const { isGuest } = useAuth();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -18,13 +20,21 @@ export default function UploadPage() {
 
     try {
       const parsed = await parseCsvFile(file);
-      const saved = await uploadDataset(file);
-      setDataset({
-        datasetId: saved.id,
-        columns: parsed.columns,
-        rows: parsed.rows,
-        fileName: saved.originalFileName,
-      });
+      if (isGuest) {
+        setDataset({
+          columns: parsed.columns,
+          rows: parsed.rows,
+          fileName: file.name,
+        });
+      } else {
+        const saved = await uploadDataset(file);
+        setDataset({
+          datasetId: saved.id,
+          columns: parsed.columns,
+          rows: parsed.rows,
+          fileName: saved.originalFileName,
+        });
+      }
       navigate("/dashboard");
     } catch (uploadError) {
       setError(
@@ -52,7 +62,9 @@ export default function UploadPage() {
             Upload Data
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Upload a CSV once, then reopen it later from Datasets.
+            {isGuest
+              ? "Analyse a CSV in this browser. Guest data is never uploaded or saved."
+              : "Upload a CSV once, then reopen it later from Datasets."}
           </p>
         </div>
 
@@ -117,7 +129,9 @@ export default function UploadPage() {
           </div>
 
           <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-            {isUploading ? "Saving and analysing CSV…" : "Drop CSV here"}
+            {isUploading
+              ? isGuest ? "Analysing CSV locally…" : "Saving and analysing CSV…"
+              : "Drop CSV here"}
           </div>
           <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {isUploading ? "Please keep this page open" : "or click Choose CSV"}

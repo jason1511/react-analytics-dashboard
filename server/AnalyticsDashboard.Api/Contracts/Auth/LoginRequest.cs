@@ -3,5 +3,5 @@ using System.ComponentModel.DataAnnotations;
 namespace AnalyticsDashboard.Api.Contracts.Auth;
 
 public sealed record LoginRequest(
-    [Required, EmailAddress, MaxLength(320)] string Email,
+    [Required, MaxLength(80)] string Username,
     [Required] string Password);

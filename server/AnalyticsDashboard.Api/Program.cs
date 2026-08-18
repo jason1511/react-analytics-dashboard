@@ -1,3 +1,5 @@
+using Amazon.S3;
+using Amazon.Runtime;
 using AnalyticsDashboard.Api.Data;
 using AnalyticsDashboard.Api.Auth;
 using AnalyticsDashboard.Api.Data.Entities;
@@ -28,6 +30,10 @@ if (Encoding.UTF8.GetByteCount(jwtOptions.SigningKey) < 32)
         "Jwt:SigningKey must be configured with at least 32 bytes. " +
         "Set Jwt__SigningKey in the environment.");
 }
+
+var datasetStorageOptions = builder.Configuration
+    .GetSection(DatasetStorageOptions.SectionName)
+    .Get<DatasetStorageOptions>() ?? new DatasetStorageOptions();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
@@ -63,7 +69,45 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton<CsvInspector>();
 builder.Services.Configure<DatasetStorageOptions>(
     builder.Configuration.GetSection(DatasetStorageOptions.SectionName));
-builder.Services.AddSingleton<IDatasetFileStorage, LocalDatasetFileStorage>();
+builder.Services.Configure<S3DatasetStorageOptions>(
+    builder.Configuration.GetSection(S3DatasetStorageOptions.SectionName));
+
+if (string.Equals(datasetStorageOptions.Provider, "S3", StringComparison.OrdinalIgnoreCase))
+{
+    var s3Options = builder.Configuration
+        .GetSection(S3DatasetStorageOptions.SectionName)
+        .Get<S3DatasetStorageOptions>() ?? new S3DatasetStorageOptions();
+    if (string.IsNullOrWhiteSpace(s3Options.ServiceUrl) ||
+        string.IsNullOrWhiteSpace(s3Options.BucketName) ||
+        string.IsNullOrWhiteSpace(s3Options.AccessKeyId) ||
+        string.IsNullOrWhiteSpace(s3Options.SecretAccessKey))
+    {
+        throw new InvalidOperationException(
+            "S3 dataset storage requires ServiceUrl, BucketName, AccessKeyId, and SecretAccessKey.");
+    }
+
+    builder.Services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(
+        new BasicAWSCredentials(s3Options.AccessKeyId, s3Options.SecretAccessKey),
+        new AmazonS3Config
+        {
+            ServiceURL = s3Options.ServiceUrl,
+            AuthenticationRegion = s3Options.Region,
+            ForcePathStyle = true
+        }));
+    builder.Services.AddSingleton<IDatasetFileStorage, S3DatasetFileStorage>();
+}
+else if (string.Equals(
+             datasetStorageOptions.Provider,
+             "Local",
+             StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddSingleton<IDatasetFileStorage, LocalDatasetFileStorage>();
+}
+else
+{
+    throw new InvalidOperationException(
+        "DatasetStorage:Provider must be either 'Local' or 'S3'.");
+}
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")

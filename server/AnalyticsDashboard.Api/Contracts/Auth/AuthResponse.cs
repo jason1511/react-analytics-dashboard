@@ -5,4 +5,6 @@ public sealed record AuthResponse(
     DateTimeOffset ExpiresAt,
     UserResponse User);
 
-public sealed record UserResponse(Guid Id, string Email);
+public sealed record UserResponse(Guid Id, string Username);
+
+public sealed record UsernameAvailabilityResponse(bool Available);

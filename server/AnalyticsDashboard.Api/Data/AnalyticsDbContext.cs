@@ -51,20 +51,20 @@ public sealed class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> opti
         user.ToTable("app_users");
         user.HasKey(item => item.Id);
         user.Property(item => item.Id).HasColumnName("id");
-        user.Property(item => item.Email)
-            .HasColumnName("email")
-            .HasMaxLength(320)
+        user.Property(item => item.Username)
+            .HasColumnName("username")
+            .HasMaxLength(80)
             .IsRequired();
-        user.Property(item => item.NormalizedEmail)
-            .HasColumnName("normalized_email")
-            .HasMaxLength(320)
+        user.Property(item => item.NormalizedUsername)
+            .HasColumnName("normalized_username")
+            .HasMaxLength(80)
             .IsRequired();
         user.Property(item => item.PasswordHash)
             .HasColumnName("password_hash")
             .IsRequired();
         user.Property(item => item.CreatedAt).HasColumnName("created_at");
-        user.HasIndex(item => item.NormalizedEmail)
+        user.HasIndex(item => item.NormalizedUsername)
             .IsUnique()
-            .HasDatabaseName("ux_app_users_normalized_email");
+            .HasDatabaseName("ux_app_users_normalized_username");
     }
 }

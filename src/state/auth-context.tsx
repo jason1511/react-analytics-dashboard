@@ -16,22 +16,32 @@ import { useDataset } from "./use-dataset";
 
 type AuthState = {
   user: AuthUser | null;
+  isGuest: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string) => Promise<void>;
+  continueAsGuest: () => void;
   logout: () => void;
 };
+
+const GUEST_SESSION_KEY = "analytics-dashboard.guest";
 
 export const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const { clear: clearDataset } = useDataset();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [isGuest, setIsGuest] = useState(
+    () => !getAccessToken() &&
+      window.sessionStorage.getItem(GUEST_SESSION_KEY) === "true"
+  );
   const [isLoading, setIsLoading] = useState(() => Boolean(getAccessToken()));
 
   const logout = useCallback(() => {
     clearAccessToken();
+    window.sessionStorage.removeItem(GUEST_SESSION_KEY);
     setUser(null);
+    setIsGuest(false);
     clearDataset();
   }, [clearDataset]);
 
@@ -49,14 +59,16 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
 
   const authenticate = useCallback(
     async (
-      request: (email: string, password: string) => ReturnType<typeof requestLogin>,
-      email: string,
+      request: (username: string, password: string) => ReturnType<typeof requestLogin>,
+      username: string,
       password: string
     ) => {
-      const response = await request(email, password);
+      const response = await request(username, password);
       clearDataset();
+      window.sessionStorage.removeItem(GUEST_SESSION_KEY);
       storeAccessToken(response.accessToken);
       setUser(response.user);
+      setIsGuest(false);
     },
     [clearDataset]
   );
@@ -64,12 +76,20 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
   const value = useMemo<AuthState>(
     () => ({
       user,
+      isGuest,
       isLoading,
-      login: (email, password) => authenticate(requestLogin, email, password),
-      register: (email, password) => authenticate(requestRegister, email, password),
+      login: (username, password) => authenticate(requestLogin, username, password),
+      register: (username, password) => authenticate(requestRegister, username, password),
+      continueAsGuest: () => {
+        clearAccessToken();
+        clearDataset();
+        window.sessionStorage.setItem(GUEST_SESSION_KEY, "true");
+        setUser(null);
+        setIsGuest(true);
+      },
       logout,
     }),
-    [user, isLoading, logout, authenticate]
+    [user, isGuest, isLoading, logout, authenticate, clearDataset]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

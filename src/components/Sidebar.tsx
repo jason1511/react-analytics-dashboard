@@ -6,7 +6,7 @@ const linkBase = "block rounded-lg px-4 py-2 text-sm font-medium transition";
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { isDark, toggle } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, isGuest, logout } = useAuth();
   const navigate = useNavigate();
 
   return (
@@ -42,8 +42,11 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-800">
-        <div className="mb-3 truncate px-1 text-xs text-slate-500 dark:text-slate-400" title={user?.email}>
-          Signed in as <span className="font-medium text-slate-700 dark:text-slate-200">{user?.email}</span>
+        <div className="mb-3 truncate px-1 text-xs text-slate-500 dark:text-slate-400" title={user?.username}>
+          {isGuest ? "Demo session" : "Signed in as"}{" "}
+          <span className="font-medium text-slate-700 dark:text-slate-200">
+            {isGuest ? "Guest" : user?.username}
+          </span>
         </div>
         <button
           onClick={toggle}
@@ -67,7 +70,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           }}
           className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
         >
-          Sign out
+          {isGuest ? "Exit guest mode" : "Sign out"}
         </button>
       </div>
     </div>
