@@ -5,7 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:worker": "npm run build && wrangler dev",
     "build": "tsc -b && vite build",
+    "typecheck:worker": "tsc -p tsconfig.worker.json",
+    "deploy": "npm run build && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply react-analytics-dashboard-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply react-analytics-dashboard-db --remote",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -19,6 +24,7 @@
     "recharts": "^3.7.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260819.1",
     "@eslint/js": "^9.39.1",
     "@tailwindcss/cli": "^4.1.18",
     "@tailwindcss/postcss": "^4.1.18",
@@ -37,6 +43,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.124.0"
   }
 }

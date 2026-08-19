@@ -1,30 +1,17 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:5000")
-  .replace(/\/$/, "");
-const TOKEN_KEY = "analytics-dashboard.access-token";
-
-export function getAccessToken() {
-  return window.localStorage.getItem(TOKEN_KEY);
-}
-
-export function storeAccessToken(token: string) {
-  window.localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearAccessToken() {
-  window.localStorage.removeItem(TOKEN_KEY);
-}
+const API_BASE_URL = "";
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
-  const token = getAccessToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
   if (init?.body && !(init.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers,
+    credentials: "same-origin",
+  });
   if (response.status === 401) {
-    clearAccessToken();
     window.dispatchEvent(new Event("auth:unauthorized"));
   }
   if (!response.ok) throw await createApiError(response);
@@ -33,11 +20,12 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
 
 export async function apiText(path: string, init?: RequestInit) {
   const headers = new Headers(init?.headers);
-  const token = getAccessToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers,
+    credentials: "same-origin",
+  });
   if (response.status === 401) {
-    clearAccessToken();
     window.dispatchEvent(new Event("auth:unauthorized"));
   }
   if (!response.ok) throw await createApiError(response);
@@ -46,11 +34,12 @@ export async function apiText(path: string, init?: RequestInit) {
 
 export async function apiEmpty(path: string, init?: RequestInit) {
   const headers = new Headers(init?.headers);
-  const token = getAccessToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers,
+    credentials: "same-origin",
+  });
   if (response.status === 401) {
-    clearAccessToken();
     window.dispatchEvent(new Event("auth:unauthorized"));
   }
   if (!response.ok) throw await createApiError(response);

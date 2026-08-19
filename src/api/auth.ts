@@ -1,8 +1,7 @@
-import { apiRequest } from "./client";
+import { apiEmpty, apiRequest } from "./client";
 
 export type AuthUser = { id: string; username: string };
 export type AuthResponse = {
-  accessToken: string;
   expiresAt: string;
   user: AuthUser;
 };
@@ -23,6 +22,10 @@ export function login(username: string, password: string) {
 
 export function getCurrentUser() {
   return apiRequest<AuthUser>("/api/auth/me");
+}
+
+export function logout() {
+  return apiEmpty("/api/auth/logout", { method: "POST" });
 }
 
 export async function checkUsernameAvailability(username: string, signal?: AbortSignal) {

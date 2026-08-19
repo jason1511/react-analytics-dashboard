@@ -1,290 +1,89 @@
 # React Analytics Dashboard
 
-A responsive browser-based analytics application for uploading, exploring, validating, and visualising CSV datasets.
+A full-stack CSV analytics portfolio application built on React and Cloudflare. Users can create a username-only account, persist private datasets, and reopen them later. Guests receive the complete analytics demo without uploading or saving their data.
 
-The project combines a **React** and **TypeScript** frontend with an **ASP.NET Core 8** API,
-**PostgreSQL**, and **Entity Framework Core**. It transforms raw tabular data into practical
-summaries, quality indicators, filters, and interactive charts while keeping uploaded datasets
-available between sessions.
+## Live application
 
-## Overview
+[react-analytics-dashboard.pages.dev](https://react-analytics-dashboard.pages.dev/)
 
-The dashboard allows users to upload a CSV file and immediately inspect its structure and contents.
+> The Cloudflare Pages deployment is being migrated to a Workers Static Assets deployment so the frontend and API run as one application.
 
-It automatically:
+## Features
 
-- Parses CSV data in the browser
-- Detects columns and records
-- Identifies numeric-like fields
-- Calculates dataset quality metrics
-- Suggests useful grouping columns
-- Aggregates category counts and numeric totals
-- Displays interactive charts
-- Supports search and multi-column filtering
-- Provides a responsive light and dark interface
+- Upload and validate CSV files up to 10 MB
+- Username and password accounts with live username availability checks
+- Secure opaque sessions stored in HttpOnly, Secure, SameSite cookies
+- Guest mode with full analytics and browser-only data
+- Private, owner-scoped saved datasets
+- Reopen and delete persisted datasets
+- Automatic numeric and categorical column detection
+- Dataset completeness and missing-value analysis
+- Category counts and numeric aggregations
+- Interactive Recharts visualisations
+- Search and multi-column filtering
+- Responsive light and dark interface
 
-Signed-in users persist uploaded CSV files and metadata through the API. Guests can use the full
-analytics experience without creating an account; their files remain browser-only and are never
-sent to the server. Interactive filtering, aggregation, and chart calculations remain client-side.
+## Cloudflare-native stack
 
-## Key Features
+| Layer | Technology | Responsibility |
+|---|---|---|
+| Interface | React 19, TypeScript, Vite, Tailwind CSS | Upload, analysis, exploration, and charts |
+| API | Cloudflare Workers | Authentication and owner-scoped dataset endpoints |
+| Relational data | Cloudflare D1 | Users, password hashes, sessions, and dataset metadata |
+| Object storage | Cloudflare R2 | Private CSV file contents |
+| Hosting | Workers Static Assets | React SPA and API in one deployment |
+| Monitoring | Workers Observability | Request logs and runtime errors |
 
-### CSV Upload and Parsing
-
-- Upload CSV datasets through the ASP.NET Core API
-- Parse files with PapaParse
-- Validate CSV structure on both the client and server
-- Extract column headers and row data
-- Handle parsing errors and invalid input
-- Reopen or delete previously uploaded datasets
-- Register with a unique username and sign in with a private account
-- Check username availability while registering
-- Continue as a guest with full analytics and no server-side saving
-- Restrict every dataset operation to its owner
-- Store the active dataset in shared application state
-- Navigate between upload, dashboard, and exploration views
-
-### Automatic Dataset Analysis
-
-The dashboard inspects uploaded data and calculates:
-
-- Total row count
-- Total column count
-- Number of detected numeric columns
-- Distinct grouped values
-- Missing cell count
-- Overall dataset completeness
-- Per-column distinct-value counts
-- Per-column missing-value counts
-- Basic numeric or categorical type classification
-
-Numeric detection samples dataset values and classifies a column as numeric when most non-empty values can be converted safely.
-
-### Smart Grouping
-
-The application selects a useful default grouping column by considering:
-
-- Number of distinct values
-- Ratio of unique values to total values
-- Whether the column resembles an ID
-- Whether the column resembles a date or timestamp
-- Whether the column contains a practical number of categories
-
-Users can change the grouping column at any time.
-
-### Aggregation and Visualisation
-
-The dashboard can:
-
-- Count records by category
-- Sum a selected numeric field by category
-- Rank the largest groups
-- Display the top results in interactive bar charts
-- Generate quick insights from the leading category
-- Format large values for easier reading
-
-### Dataset Exploration
-
-The exploration view supports:
-
-- Debounced text search
-- Multi-column filter chips
-- Filtering records by selected values
-- Inspecting tabular data
-- Reviewing uploaded datasets without reloading the page
-
-### Data Quality Indicators
-
-The dashboard helps users evaluate dataset quality through:
-
-- Missing-cell totals
-- Completeness percentage
-- Column-level missing values
-- Column-level distinct values
-- Numeric and categorical classification
-- Prioritised summaries of useful columns
-
-### Responsive Interface
-
-- Responsive sidebar and page layout
-- Desktop and mobile-friendly views
-- Light and dark themes
-- Reusable cards, filters, charts, and layout components
-- React Router navigation between application sections
-
-## Application Routes
-
-| Route | Purpose |
-|---|---|
-| `/datasets` | View, reopen, and delete persistent datasets |
-| `/login` | Sign in to a dataset account |
-| `/register` | Create a private dataset account |
-| `/upload` | Upload and parse a CSV dataset |
-| `/dashboard` | View KPIs, quality metrics, aggregations, and charts |
-| `/explore` | Search, filter, and inspect dataset records |
-
-The root route redirects to `/datasets`.
-
-## Tech Stack
-
-### Frontend
-
-- React 19
-- TypeScript
-- React Router
-- Tailwind CSS
-- HTML5
-- Responsive web design
-
-### Data Processing
-
-- PapaParse
-- JavaScript `Map` and `Set`
-- Client-side filtering
-- Client-side aggregation
-- Numeric-field detection
-- Missing-value analysis
-
-### Visualisation
-
-- Recharts
-- Reusable chart components
-
-### Backend
-
-- ASP.NET Core 8 Web API
-- PostgreSQL
-- Entity Framework Core migrations
-- CsvHelper server-side validation
-- Local file-storage abstraction
-- S3-compatible production storage, including Cloudflare R2
-- Swagger and health checks
-
-### Development Tooling
-
-- Vite
-- ESLint
-- PostCSS
-- npm
+Interactive analysis remains client-side for a responsive experience. The Worker validates every saved upload, D1 stores its metadata, and R2 stores its original CSV object. Guest uploads never leave the browser.
 
 ## Architecture
 
-```text
-React upload
-   |
-   v
-JWT-authenticated request
-   |
-   v
-ASP.NET Core API
-   |
-   v
-PostgreSQL metadata + CSV storage
-   |
-   v
-Datasets page
-   |
-   +-- reopen CSV --> shared dataset state
-                           |
-                 +---------+---------+
-                 |                   |
-                 v                   v
-            Dashboard page       Explore page
-   |                       |
-   +-- KPI calculations    +-- Search
-   +-- Type detection      +-- Column filters
-   +-- Data quality        +-- Table inspection
-   +-- Grouping
-   +-- Aggregation
-   +-- Recharts
+```mermaid
+flowchart TD
+    Browser[React browser app]
+    Worker[Cloudflare Worker API]
+    D1[(D1 metadata)]
+    R2[(R2 CSV objects)]
+
+    Browser -->|Account and dataset requests| Worker
+    Worker --> D1
+    Worker --> R2
+    Browser -->|Guest CSV stays local| Browser
 ```
 
-The application separates responsibilities across:
+## Application routes
 
-- Page components
-- Shared dataset state
-- Theme state
-- Layout components
-- Empty states
-- Filter controls
-- Chart components
-- Data-processing helpers
+| Route | Purpose |
+|---|---|
+| `/login` | Sign in or continue as a guest |
+| `/register` | Create a username and password account |
+| `/datasets` | Reopen or delete saved datasets |
+| `/upload` | Upload and parse a CSV |
+| `/dashboard` | Review KPIs, quality metrics, aggregations, and charts |
+| `/explore` | Search, filter, and inspect rows |
 
-## Data Processing Flow
+## API routes
 
-When a user uploads a CSV file:
+| Method and route | Purpose |
+|---|---|
+| `POST /api/auth/register` | Register and start a session |
+| `POST /api/auth/login` | Sign in and start a session |
+| `POST /api/auth/logout` | Revoke the current session |
+| `GET /api/auth/me` | Restore the current user |
+| `GET /api/auth/username-available` | Check a normalized username |
+| `GET /api/datasets` | List the current user's datasets |
+| `POST /api/datasets/upload` | Validate and persist a CSV |
+| `GET /api/datasets/:id/content` | Read an owned CSV from R2 |
+| `PATCH /api/datasets/:id/name` | Rename an owned dataset |
+| `DELETE /api/datasets/:id` | Delete owned metadata and object data |
 
-1. PapaParse validates and previews the selected file in React.
-2. The API authenticates the user, validates the file again, and inspects its rows and columns.
-3. PostgreSQL stores owner-scoped metadata and the storage layer saves the CSV.
-4. The active dataset is placed in shared React state.
-5. The dashboard samples values to identify numeric columns.
-6. Missing values, completeness, grouping, and aggregations are calculated.
-7. Category counts and numeric sums are generated.
-8. Recharts renders the results.
-9. The same dataset becomes available in the exploration view.
-
-## Example Analytics
-
-For a dataset containing fields such as:
-
-```text
-Region,Product,Revenue,Units
-North,Bike A,1200,4
-South,Bike B,950,3
-North,Bike C,1800,5
-```
-
-The dashboard can produce:
-
-- Record count by region
-- Revenue sum by region
-- Units sum by product
-- Dataset completeness
-- Numeric-column detection
-- Distinct-value summaries
-- Searchable and filterable records
-
-## Project Structure
-
-A simplified view of the application:
-
-```text
-src/
-├── components/
-│   ├── charts/
-│   ├── AppShell.tsx
-│   └── EmptyState.tsx
-├── pages/
-│   ├── DashboardPage.tsx
-│   ├── ExplorePage.tsx
-│   └── UploadPage.tsx
-├── state/
-│   ├── use-dataset.tsx
-│   └── use-theme.tsx
-├── App.tsx
-└── main.tsx
-```
-
-The exact structure may evolve as features are added.
-
-## Getting Started
+## Local development
 
 ### Prerequisites
 
-- Node.js
+- Node.js 24
 - npm
-- .NET 8 SDK
-- PostgreSQL 16 (or Docker)
-
-### Installation
-
-Clone the repository:
-
-```bash
-git clone https://github.com/jason1511/react-analytics-dashboard.git
-cd react-analytics-dashboard
-```
+- A Cloudflare account for remote D1/R2 and deployment
 
 Install dependencies:
 
@@ -292,171 +91,103 @@ Install dependencies:
 npm install
 ```
 
-Copy `.env.example` values into your local environment. Set a unique database password and a
-random JWT signing key of at least 32 bytes; never commit real credentials.
-
-Start PostgreSQL, then the API:
+Apply the D1 migration to Wrangler's local database:
 
 ```bash
-POSTGRES_PASSWORD=your-local-password docker compose up -d
-export ConnectionStrings__AnalyticsDatabase='Host=localhost;Port=5432;Database=analytics_dashboard;Username=analytics;Password=your-local-password'
-export Jwt__SigningKey='replace-with-a-long-random-development-key'
-dotnet run --project server/AnalyticsDashboard.Api
+npm run db:migrate:local
 ```
 
-Start the frontend in a second terminal:
+Start the Worker on port 8787:
 
 ```bash
-npm run dev
+npm run dev:worker
 ```
 
-Open the local address displayed by Vite.
-
-## Available Scripts
+In a second terminal, start Vite. Its `/api` development proxy points to the local Worker:
 
 ```bash
 npm run dev
 ```
 
-Starts the Vite development server.
+Local Wrangler uses local D1 and R2 storage. No Docker, PostgreSQL, .NET SDK, R2 access key, or application secret is required.
+
+## Cloudflare deployment
+
+The committed `wrangler.jsonc` binds:
+
+- D1 database `react-analytics-dashboard-db`
+- R2 bucket `react-analytics-dashboard-data`
+- Static assets from `dist`
+
+Authenticate Wrangler, apply the production schema once, and deploy:
 
 ```bash
-npm run build
+npx wrangler login
+npm run db:migrate:remote
+npm run deploy
 ```
 
-Runs the TypeScript build and creates a production bundle.
+The D1 database ID and R2 bucket name are resource identifiers, not credentials. A Worker accesses both through bindings, so R2 S3 access keys must not be committed or configured for this application.
+
+## Quality checks
 
 ```bash
 npm run lint
-```
-
-Runs ESLint across the project.
-
-```bash
-npm run preview
-```
-
-Previews the production build locally.
-
-## Building for Production
-
-Create a production build:
-
-```bash
+npm test
+npm run typecheck:worker
 npm run build
+npx wrangler deploy --dry-run
 ```
 
-The generated files will be placed in the `dist` directory.
+GitHub Actions runs the same lint, test, frontend build, Worker type-check, and Worker bundle validation on pushes and pull requests.
 
-The project can be deployed to static hosting platforms such as:
+## Security and privacy
 
-- Cloudflare Pages
-- Netlify
-- Vercel
-- GitHub Pages
+- Passwords are derived with salted PBKDF2-SHA-256 hashes and never stored in plaintext.
+- Random session tokens are stored only as SHA-256 hashes in D1.
+- The browser receives the session token only through an HttpOnly cookie.
+- State-changing API requests enforce a same-origin check.
+- Every dataset query includes the authenticated owner's ID.
+- R2 objects use owner-prefixed, generated keys rather than user-controlled paths.
+- Guest CSV files remain in browser memory and are never sent to the API.
 
-## Privacy
+## Project structure
 
-Uploaded CSV data is stored by the configured application server and processed in the browser
-when opened by a signed-in user. Accounts use hashed passwords and short-lived signed access
-tokens. Dataset list, download, rename, and delete queries all require the authenticated owner's
-identifier. In guest mode, CSV data stays in browser memory and is not uploaded or saved.
-Existing anonymous records from older versions remain unowned and are not exposed to any account.
+```text
+migrations/       D1 schema migrations
+public/           Static sample data
+src/              React application
+worker/           Cloudflare Worker API and tests
+wrangler.jsonc    D1, R2, assets, and observability bindings
+```
 
-Production deployments can set `DatasetStorage__Provider=S3` and supply an S3-compatible endpoint,
-bucket, access key, and secret through environment variables. Local development keeps using the
-filesystem by default. Switching providers does not automatically migrate previously stored files.
+## Current limitations
 
-## Engineering Decisions
-
-### Hybrid Processing
-
-The server owns persistence and validates every uploaded CSV. React performs interactive
-filtering, aggregation, and analysis after loading a selected dataset. This keeps the current
-experience responsive while the project remains focused on small and moderate datasets.
-
-### Sample-Based Numeric Detection
-
-Numeric types are inferred from a sample of non-empty values rather than requiring a predefined schema.
-
-This allows the dashboard to work with different datasets while avoiding expensive full-column analysis for every type decision.
-
-### Memoised Calculations
-
-React memoisation is used for derived information such as:
-
-- Numeric columns
-- Category counts
-- Numeric aggregations
-- Distinct groups
-- Completeness metrics
-- Column summaries
-
-This avoids unnecessary recalculation when unrelated interface state changes.
-
-### Reusable Components
-
-Charts, KPI cards, navigation, layouts, and empty states are separated into reusable components to keep page logic manageable.
-
-## Current Limitations
-
-- Designed primarily for small and moderate datasets
 - CSV only
-- No password-reset or account-recovery flow yet
-- No collaborative dashboards
-- No scheduled data refresh
+- Intended for small and moderate datasets up to 10 MB
+- No password recovery because accounts intentionally do not require email
+- No collaborative dashboards or shared datasets
 - Type detection is heuristic rather than schema-driven
 
-## Planned Improvements
+## What I learned
 
-Potential future improvements include:
-
-- Support for Excel and JSON files
-- Additional chart types
-- Date and time-series detection
-- Saved dashboard configurations
-- Exportable filtered datasets
-- More advanced descriptive statistics
-- Column renaming and data cleaning
-- Larger-file processing with Web Workers
-- Refresh tokens and account-recovery flows
-- Accessibility improvements
-- Deployment preview and screenshots
-
-## What I Learned
-
-This project strengthened my experience in:
-
-- React and TypeScript application design
-- Client-side data transformation
-- CSV parsing and validation
-- Numeric and categorical type detection
-- Data aggregation and grouping
-- Data-quality analysis
-- Reusable component development
-- Interactive chart visualisation
-- Shared state management
-- Responsive interface design
-- Performance-aware derived calculations
-- Error and empty-state handling
-- ASP.NET Core REST API design
-- PostgreSQL persistence and Entity Framework migrations
-- Multipart upload handling and secure file storage
-- JWT authentication, password hashing, and ownership isolation
-- Guest-mode privacy and S3-compatible object storage
-- Frontend and backend continuous integration
+- Designing a full-stack React and TypeScript application
+- Building serverless REST APIs with Cloudflare Workers
+- Relational modelling and migrations with D1
+- Private object storage with R2 bindings
+- Password hashing, opaque sessions, and ownership isolation
+- Multipart upload handling and server-side CSV validation
+- Client-side analytics, filtering, aggregation, and visualisation
+- Guest-mode privacy and progressive enhancement
+- Full-stack CI and single-deployment architecture
 
 ## Author
 
-**Jason Leonard**
+**Jason Leonard** — Graduate Full Stack Developer based in Melbourne, Australia.
 
-Graduate Full Stack Developer based in Melbourne, Australia.
-
-- GitHub: [github.com/jason1511](https://github.com/jason1511)
-- LinkedIn: [linkedin.com/in/jason-leonard-197230163](https://linkedin.com/in/jason-leonard-197230163)
+- [GitHub](https://github.com/jason1511)
+- [LinkedIn](https://linkedin.com/in/jason-leonard-197230163)
 
 ## Licence
 
-This project is currently provided as a portfolio and learning project.
-
-Unless a separate licence file is added, the source code should not be treated as licensed for redistribution or commercial reuse.
+This project is provided as a portfolio and learning project. Unless a separate licence is added, the source should not be treated as licensed for redistribution or commercial reuse.

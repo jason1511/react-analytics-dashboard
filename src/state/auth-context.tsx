@@ -4,14 +4,10 @@ import { createContext, useCallback, useEffect, useMemo, useState } from "react"
 import {
   getCurrentUser,
   login as requestLogin,
+  logout as requestLogout,
   register as requestRegister,
   type AuthUser,
 } from "../api/auth";
-import {
-  clearAccessToken,
-  getAccessToken,
-  storeAccessToken,
-} from "../api/client";
 import { useDataset } from "./use-dataset";
 
 type AuthState = {
@@ -30,32 +26,38 @@ export const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const { clear: clearDataset } = useDataset();
+  const [shouldRestoreSession] = useState(
+    () => window.sessionStorage.getItem(GUEST_SESSION_KEY) !== "true"
+  );
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isGuest, setIsGuest] = useState(
-    () => !getAccessToken() &&
-      window.sessionStorage.getItem(GUEST_SESSION_KEY) === "true"
+    () => window.sessionStorage.getItem(GUEST_SESSION_KEY) === "true"
   );
-  const [isLoading, setIsLoading] = useState(() => Boolean(getAccessToken()));
+  const [isLoading, setIsLoading] = useState(shouldRestoreSession);
 
-  const logout = useCallback(() => {
-    clearAccessToken();
+  const clearLocalAuth = useCallback(() => {
     window.sessionStorage.removeItem(GUEST_SESSION_KEY);
     setUser(null);
     setIsGuest(false);
     clearDataset();
   }, [clearDataset]);
 
+  const logout = useCallback(() => {
+    void requestLogout().catch(() => undefined);
+    clearLocalAuth();
+  }, [clearLocalAuth]);
+
   useEffect(() => {
-    const onUnauthorized = () => logout();
+    const onUnauthorized = () => clearLocalAuth();
     window.addEventListener("auth:unauthorized", onUnauthorized);
-    if (getAccessToken()) {
+    if (shouldRestoreSession) {
       getCurrentUser()
         .then(setUser)
-        .catch(() => logout())
+        .catch(() => clearLocalAuth())
         .finally(() => setIsLoading(false));
     }
     return () => window.removeEventListener("auth:unauthorized", onUnauthorized);
-  }, [logout]);
+  }, [clearLocalAuth, shouldRestoreSession]);
 
   const authenticate = useCallback(
     async (
@@ -66,7 +68,6 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
       const response = await request(username, password);
       clearDataset();
       window.sessionStorage.removeItem(GUEST_SESSION_KEY);
-      storeAccessToken(response.accessToken);
       setUser(response.user);
       setIsGuest(false);
     },
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
       login: (username, password) => authenticate(requestLogin, username, password),
       register: (username, password) => authenticate(requestRegister, username, password),
       continueAsGuest: () => {
-        clearAccessToken();
+        void requestLogout().catch(() => undefined);
         clearDataset();
         window.sessionStorage.setItem(GUEST_SESSION_KEY, "true");
         setUser(null);
