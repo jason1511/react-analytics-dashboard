@@ -161,20 +161,21 @@ function inferRole(
   const uniqueRatio = nonEmptyValues.length ? distinct / nonEmptyValues.length : 0;
   const idByName = ID_NAME_PATTERN.test(normalisedName);
 
-  if (
-    (idByName && uniqueRatio >= 0.7) ||
-    (uniqueRatio >= 0.9 && looksLikeIdentifierValues(nonEmptyValues))
-  ) {
+  if (idByName && uniqueRatio >= 0.7) {
     return {
       role: "identifier" as const,
-      reason: idByName
-        ? "Its name and mostly unique values indicate an identifier."
-        : "Its values are unique and follow an identifier pattern.",
+      reason: "Its name and mostly unique values indicate an identifier.",
     };
   }
 
   if (type === "date") {
     return { role: "temporal" as const, reason: "Date values make this a time dimension." };
+  }
+  if (uniqueRatio >= 0.9 && looksLikeIdentifierValues(nonEmptyValues)) {
+    return {
+      role: "identifier" as const,
+      reason: "Its values are unique and follow an identifier pattern.",
+    };
   }
   if (type === "number") {
     return { role: "measure" as const, reason: "Numeric values can be aggregated as a measure." };

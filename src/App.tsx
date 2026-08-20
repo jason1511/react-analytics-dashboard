@@ -5,6 +5,7 @@ import UploadPage from "./pages/UploadPage";
 import ExplorePage from "./pages/ExplorePage";
 import ProfilePage from "./pages/ProfilePage";
 import QualityPage from "./pages/QualityPage";
+import InsightsPage from "./pages/InsightsPage";
 import DatasetsPage from "./pages/DatasetsPage";
 import AuthPage from "./pages/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/quality" element={<QualityPage />} />
+            <Route path="/insights" element={<InsightsPage />} />
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/explore" element={<ExplorePage />} />
           </Route>
