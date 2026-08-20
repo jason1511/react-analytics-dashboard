@@ -17,6 +17,7 @@ A full-stack CSV analytics portfolio application built on React and Cloudflare. 
 - Universal column profiling for numbers, dates, booleans, categories, text, identifiers, and analytical roles
 - Dataset and type-aware column statistics, including distributions, frequencies, date ranges, text lengths, and identifier uniqueness
 - Searchable data-profile workspace with complete column details and session-level type and role correction
+- Read-only data-quality scoring for missing, duplicate, invalid, mixed, constant, inconsistent, and outlying values
 - Dataset completeness and missing-value analysis
 - Category counts and numeric aggregations
 - Interactive Recharts visualisations
@@ -61,6 +62,7 @@ flowchart TD
 | `/upload` | Upload and parse a CSV |
 | `/dashboard` | Review KPIs, quality metrics, aggregations, and charts |
 | `/profile` | Inspect every column, review statistics, and correct inferred types or roles |
+| `/quality` | Review scored data-quality issues and inspect affected source rows |
 | `/explore` | Search, filter, and inspect rows |
 
 ## API routes

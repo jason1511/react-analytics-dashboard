@@ -22,6 +22,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           { to: "/datasets", label: "Datasets" },
           { to: "/dashboard", label: "Dashboard" },
           { to: "/profile", label: "Profile" },
+          { to: "/quality", label: "Quality" },
           { to: "/upload", label: "Upload" },
           { to: "/explore", label: "Explore" },
         ].map((link) => (
