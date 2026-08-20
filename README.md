@@ -4,9 +4,7 @@ A full-stack CSV analytics portfolio application built on React and Cloudflare. 
 
 ## Live application
 
-[react-analytics-dashboard.pages.dev](https://react-analytics-dashboard.pages.dev/)
-
-> The Cloudflare Pages deployment is being migrated to a Workers Static Assets deployment so the frontend and API run as one application.
+[react-analytics-dashboard.jasonleonard46.workers.dev](https://react-analytics-dashboard.jasonleonard46.workers.dev/)
 
 ## Features
 
@@ -136,6 +134,17 @@ secret: changing or deleting it will prevent existing accounts from signing in.
 
 The D1 database ID and R2 bucket name are resource identifiers, not credentials. A Worker accesses both through bindings, so R2 S3 access keys must not be committed or configured for this application.
 
+### Automatic deployment from GitHub
+
+The CI workflow automatically deploys the Worker after all checks pass for a push to `main`.
+Add these repository secrets under **Settings → Secrets and variables → Actions**:
+
+- `CLOUDFLARE_API_TOKEN`: a Cloudflare API token with permission to edit Workers
+- `CLOUDFLARE_ACCOUNT_ID`: the Cloudflare account ID that owns the Worker
+
+Pull requests run every validation step but do not deploy. The `PASSWORD_PEPPER` remains a
+Cloudflare Worker secret and is preserved across deployments; do not add it to GitHub.
+
 ## Quality checks
 
 ```bash
@@ -146,7 +155,7 @@ npm run build
 npx wrangler deploy --dry-run
 ```
 
-GitHub Actions runs the same lint, test, frontend build, Worker type-check, and Worker bundle validation on pushes and pull requests.
+GitHub Actions runs the same lint, test, frontend build, Worker type-check, and Worker bundle validation on pushes and pull requests. Successful pushes to `main` are deployed automatically.
 
 ## Security and privacy
 
