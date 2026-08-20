@@ -103,4 +103,23 @@ describe("dataset statistics", () => {
       columns: [],
     });
   });
+
+  it("applies manual type and role corrections", () => {
+    const statistics = calculateDatasetStatistics(columns, rows, {
+      Amount: { type: "category", role: "dimension" },
+    });
+    const amount = statistics.columns.find((column) => column.profile.column === "Amount");
+
+    expect(amount?.profile).toMatchObject({
+      type: "category",
+      role: "dimension",
+      confidence: 1,
+    });
+    expect(amount?.numeric).toBeUndefined();
+    expect(amount?.frequencies?.[0]).toEqual({
+      value: "30",
+      count: 2,
+      percentage: 0.5,
+    });
+  });
 });

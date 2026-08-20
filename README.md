@@ -16,6 +16,7 @@ A full-stack CSV analytics portfolio application built on React and Cloudflare. 
 - Reopen and delete persisted datasets
 - Universal column profiling for numbers, dates, booleans, categories, text, identifiers, and analytical roles
 - Dataset and type-aware column statistics, including distributions, frequencies, date ranges, text lengths, and identifier uniqueness
+- Searchable data-profile workspace with complete column details and session-level type and role correction
 - Dataset completeness and missing-value analysis
 - Category counts and numeric aggregations
 - Interactive Recharts visualisations
@@ -59,6 +60,7 @@ flowchart TD
 | `/datasets` | Reopen or delete saved datasets |
 | `/upload` | Upload and parse a CSV |
 | `/dashboard` | Review KPIs, quality metrics, aggregations, and charts |
+| `/profile` | Inspect every column, review statistics, and correct inferred types or roles |
 | `/explore` | Search, filter, and inspect rows |
 
 ## API routes

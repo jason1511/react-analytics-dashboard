@@ -140,11 +140,11 @@ function ColumnStatisticGrid({ statistics }: { statistics: ColumnStatistics }) {
 /* ---------- page ---------- */
 
 export default function DashboardPage() {
-  const { rows, columns, fileName } = useDataset();
+  const { rows, columns, fileName, columnOverrides } = useDataset();
 
   const datasetStatistics = useMemo(
-    () => calculateDatasetStatistics(columns, rows),
-    [columns, rows],
+    () => calculateDatasetStatistics(columns, rows, columnOverrides),
+    [columns, rows, columnOverrides],
   );
   const numericCols = useMemo(
     () =>

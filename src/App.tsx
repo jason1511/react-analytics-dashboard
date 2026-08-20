@@ -3,6 +3,7 @@ import AppShell from "./components/AppShell";
 import DashboardPage from "./pages/DashboardPage";
 import UploadPage from "./pages/UploadPage";
 import ExplorePage from "./pages/ExplorePage";
+import ProfilePage from "./pages/ProfilePage";
 import DatasetsPage from "./pages/DatasetsPage";
 import AuthPage from "./pages/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/datasets" replace />} />
             <Route path="/datasets" element={<DatasetsPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/explore" element={<ExplorePage />} />
           </Route>

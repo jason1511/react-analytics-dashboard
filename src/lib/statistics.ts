@@ -4,6 +4,7 @@ import {
   parseNumericValue,
   profileColumns,
   type AnalyticalRole,
+  type ColumnOverride,
   type ColumnProfile,
   type ColumnType,
 } from "./profiling";
@@ -209,8 +210,18 @@ function countByRole(profiles: ColumnProfile[]) {
 export function calculateDatasetStatistics(
   columns: string[],
   rows: DataRow[],
+  overrides: Record<string, ColumnOverride> = {},
 ): DatasetStatistics {
-  const profiles = profileColumns(columns, rows);
+  const profiles = profileColumns(columns, rows).map((profile) => {
+    const override = overrides[profile.column];
+    if (!override) return profile;
+    return {
+      ...profile,
+      ...override,
+      confidence: 1,
+      reason: "Type or role manually confirmed for this browser session.",
+    };
+  });
   const columnResults = profiles.map((profile) => columnStatistics(profile, rows));
   const totalCells = rows.length * columns.length;
   const missingCells = profiles.reduce((total, profile) => total + profile.missing, 0);

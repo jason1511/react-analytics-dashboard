@@ -28,6 +28,8 @@ export type ColumnProfile = {
   sampleValues: string[];
 };
 
+export type ColumnOverride = Partial<Pick<ColumnProfile, "type" | "role">>;
+
 const BOOLEAN_PAIRS = [
   new Set(["true", "false"]),
   new Set(["yes", "no"]),
