@@ -43,6 +43,15 @@ describe("detectNumericColumns", () => {
     const rows = [{ Value: "10" }, { Value: "not numeric" }];
     expect(detectNumericColumns(["Value"], rows, 1)).toEqual(["Value"]);
   });
+
+  it("does not expose numeric identifiers as aggregatable measures", () => {
+    const rows = Array.from({ length: 5 }, (_, index) => ({
+      "Order ID": String(1000 + index),
+      Revenue: String(100 + index),
+    }));
+
+    expect(detectNumericColumns(["Order ID", "Revenue"], rows)).toEqual(["Revenue"]);
+  });
 });
 
 describe("sumByGroup", () => {

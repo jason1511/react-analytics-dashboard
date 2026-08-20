@@ -1,3 +1,5 @@
+import { parseNumericValue, profileColumns } from "./profiling";
+
 export type DataRow = Record<string, string>;
 
 export type ChartDatum = {
@@ -14,14 +16,11 @@ export type ColumnSummary = {
 };
 
 function isNumericLike(value: string) {
-  const cleaned = (value ?? "").trim().replace(/[$£€,\s]/g, "");
-  return cleaned !== "" && !Number.isNaN(Number(cleaned));
+  return parseNumericValue(value) !== undefined;
 }
 
 function toNumberSafe(value: string) {
-  const cleaned = (value ?? "").trim().replace(/[$£€,\s]/g, "");
-  const number = Number(cleaned);
-  return Number.isFinite(number) ? number : 0;
+  return parseNumericValue(value) ?? 0;
 }
 
 export function getCategoryCounts(
@@ -44,6 +43,10 @@ export function getCategoryCounts(
 
 export function pickDefaultGroupBy(columns: string[], rows: DataRow[]) {
   if (!columns.length || !rows.length) return columns[0] ?? "";
+
+  const profiles = new Map(
+    profileColumns(columns, rows).map((profile) => [profile.column, profile]),
+  );
 
   const candidates = columns
     .map((column) => {
@@ -69,6 +72,11 @@ export function pickDefaultGroupBy(columns: string[], rows: DataRow[]) {
         name.includes("timestamp");
 
       let score = 0;
+      const profile = profiles.get(column);
+      if (profile?.role === "dimension") score += 5;
+      if (profile?.role === "identifier") score -= 6;
+      if (profile?.role === "description") score -= 3;
+      if (profile?.role === "measure") score -= 2;
       if (distinct >= 2) score += 1;
       if (distinct >= 5 && distinct <= 20) score += 3;
       if (distinctRatio > 0.9) score -= 3;
@@ -87,21 +95,9 @@ export function detectNumericColumns(
   sampleSize = 80
 ) {
   const sample = rows.slice(0, sampleSize);
-
-  return columns.filter((column) => {
-    let seen = 0;
-    let numeric = 0;
-
-    for (const row of sample) {
-      const value = row[column] ?? "";
-      if (value.trim() === "") continue;
-
-      seen++;
-      if (isNumericLike(value)) numeric++;
-    }
-
-    return seen > 0 && numeric / seen >= 0.8;
-  });
+  return profileColumns(columns, sample)
+    .filter((profile) => profile.type === "number" && profile.role === "measure")
+    .map((profile) => profile.column);
 }
 
 export function sumByGroup(

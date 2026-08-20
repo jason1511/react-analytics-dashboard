@@ -3,13 +3,13 @@ import { useDataset } from "../state/use-dataset";
 import BarCountChart from "../components/charts/BarCountChart";
 import EmptyState from "../components/EmptyState";
 import {
-  columnStats,
   detectNumericColumns,
   formatNumber,
   getCategoryCounts,
   pickDefaultGroupBy,
   sumByGroup,
 } from "../lib/analytics";
+import { profileColumns } from "../lib/profiling";
 
 /* ---------- presentational helpers ---------- */
 
@@ -53,6 +53,12 @@ export default function DashboardPage() {
     [columns, rows]
   );
 
+  const profiles = useMemo(() => profileColumns(columns, rows), [columns, rows]);
+  const dateColumnCount = useMemo(
+    () => profiles.filter((profile) => profile.type === "date").length,
+    [profiles],
+  );
+
   const [groupBy, setGroupBy] = useState("");
   const [valueCol, setValueCol] = useState("");
 
@@ -85,11 +91,6 @@ export default function DashboardPage() {
     return sumByGroup(rows, groupBy, valueCol);
   }, [rows, groupBy, valueCol]);
 
-  const distinctGroups = useMemo(() => {
-    if (!groupBy || !rows.length) return 0;
-    return new Set(rows.map((r) => (r[groupBy] || "—").trim() || "—")).size;
-  }, [rows, groupBy]);
-
   const quality = useMemo(() => {
     const totalCells = rows.length * columns.length;
     if (!totalCells) return { totalCells: 0, missingCells: 0, completeness: 0 };
@@ -106,23 +107,21 @@ export default function DashboardPage() {
   }, [rows, columns]);
 
   const colSummary = useMemo(() => {
-    const stats = columnStats(columns, rows);
-
     // Show most “useful” columns first: low missing + reasonable distinct counts
-    return stats
+    return [...profiles]
       .sort((a, b) => {
         const aScore =
-          (a.kind === "numeric" ? 2 : 1) +
+          (a.role === "measure" || a.role === "dimension" || a.role === "temporal" ? 2 : 1) +
           (1 - a.missing / Math.max(1, rows.length)) +
           (a.distinct >= 2 && a.distinct <= 30 ? 1 : 0);
         const bScore =
-          (b.kind === "numeric" ? 2 : 1) +
+          (b.role === "measure" || b.role === "dimension" || b.role === "temporal" ? 2 : 1) +
           (1 - b.missing / Math.max(1, rows.length)) +
           (b.distinct >= 2 && b.distinct <= 30 ? 1 : 0);
         return bScore - aScore;
       })
       .slice(0, 6);
-  }, [columns, rows]);
+  }, [profiles, rows.length]);
 
   if (!rows.length) {
     return (
@@ -148,8 +147,12 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <KpiCard label="Rows" value={rows.length.toLocaleString()} />
         <KpiCard label="Columns" value={columns.length.toString()} />
-        <KpiCard label="Distinct groups" value={distinctGroups.toLocaleString()} />
-        <KpiCard label="Numeric cols" value={numericCols.length.toString()} />
+        <KpiCard
+          label="Measures"
+          value={numericCols.length.toString()}
+          hint="Numeric fields safe to aggregate"
+        />
+        <KpiCard label="Date columns" value={dateColumnCount.toString()} />
         <KpiCard
           label="Missing cells"
           value={quality.missingCells.toLocaleString()}
@@ -239,7 +242,7 @@ export default function DashboardPage() {
               Column summary
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              Quick “shape” of your dataset (types, missing, distinct).
+              Inferred physical types and analytical roles, with an explanation for each decision.
             </div>
           </div>
         </div>
@@ -247,27 +250,41 @@ export default function DashboardPage() {
         <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
           {colSummary.map((c) => (
             <div
-              key={c.col}
+              key={c.column}
               className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {c.col}
+                    {c.column}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-2">
-                    <Chip>{c.kind}</Chip>
+                    <Chip>Type: {c.type}</Chip>
+                    <Chip>Role: {c.role}</Chip>
                     <Chip>{c.distinct.toLocaleString()} distinct</Chip>
                     <Chip>{c.missing.toLocaleString()} missing</Chip>
                   </div>
                 </div>
                 <div className="text-right text-xs text-slate-500 dark:text-slate-400">
-                  {(c.completeness * 100).toFixed(0)}%
+                  {Math.round(c.confidence * 100)}% confidence
                 </div>
               </div>
 
+              <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                {c.reason}
+              </p>
+
+              {c.sampleValues.length ? (
+                <p className="mt-2 truncate text-xs text-slate-500 dark:text-slate-400">
+                  Examples: {c.sampleValues.join(" · ")}
+                </p>
+              ) : null}
+
               {/* completeness bar */}
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div
+                className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+                title={`${Math.round(c.completeness * 100)}% complete`}
+              >
                 <div
                   className="h-full rounded-full bg-slate-900 dark:bg-slate-100"
                   style={{ width: `${Math.round(c.completeness * 100)}%` }}
