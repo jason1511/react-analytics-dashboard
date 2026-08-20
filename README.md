@@ -15,6 +15,7 @@ A full-stack CSV analytics portfolio application built on React and Cloudflare. 
 - Private, owner-scoped saved datasets
 - Reopen and delete persisted datasets
 - Universal column profiling for numbers, dates, booleans, categories, text, identifiers, and analytical roles
+- Dataset and type-aware column statistics, including distributions, frequencies, date ranges, text lengths, and identifier uniqueness
 - Dataset completeness and missing-value analysis
 - Category counts and numeric aggregations
 - Interactive Recharts visualisations

@@ -97,13 +97,16 @@ function validCalendarDate(year: number, month: number, day: number) {
   );
 }
 
-export function isDateLike(value: string) {
+export function parseDateValue(value: string) {
   const candidate = value.trim();
-  if (!candidate || /^\d+(?:\.\d+)?$/.test(candidate)) return false;
+  if (!candidate || /^\d+(?:\.\d+)?$/.test(candidate)) return undefined;
 
   const yearFirst = candidate.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s].*)?$/);
   if (yearFirst) {
-    return validCalendarDate(Number(yearFirst[1]), Number(yearFirst[2]), Number(yearFirst[3]));
+    const year = Number(yearFirst[1]);
+    const month = Number(yearFirst[2]);
+    const day = Number(yearFirst[3]);
+    return validCalendarDate(year, month, day) ? Date.UTC(year, month - 1, day) : undefined;
   }
 
   const dayFirst = candidate.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[T\s].*)?$/);
@@ -111,13 +114,23 @@ export function isDateLike(value: string) {
     const first = Number(dayFirst[1]);
     const second = Number(dayFirst[2]);
     const year = Number(dayFirst[3]);
-    return validCalendarDate(year, second, first) || validCalendarDate(year, first, second);
+    if (validCalendarDate(year, second, first)) return Date.UTC(year, second - 1, first);
+    if (validCalendarDate(year, first, second)) return Date.UTC(year, first - 1, second);
+    return undefined;
   }
 
-  if (!/[A-Za-z]/.test(candidate)) return false;
-  return /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(
+  if (!/[A-Za-z]/.test(candidate)) return undefined;
+  const hasMonthName = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(
     candidate,
-  ) && !Number.isNaN(Date.parse(candidate));
+  );
+  const timestamp = Date.parse(candidate);
+  if (!hasMonthName || Number.isNaN(timestamp)) return undefined;
+  const parsed = new Date(timestamp);
+  return Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
+export function isDateLike(value: string) {
+  return parseDateValue(value) !== undefined;
 }
 
 function isBooleanSet(values: string[]) {
