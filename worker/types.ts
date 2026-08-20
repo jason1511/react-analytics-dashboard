@@ -1,6 +1,8 @@
 export interface Env {
   DB: D1Database;
   DATASETS: R2Bucket;
+  AUTH_RATE_LIMITER: RateLimit;
+  PASSWORD_PEPPER: string;
 }
 
 export type User = {

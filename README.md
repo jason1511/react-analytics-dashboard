@@ -109,7 +109,10 @@ In a second terminal, start Vite. Its `/api` development proxy points to the loc
 npm run dev
 ```
 
-Local Wrangler uses local D1 and R2 storage. No Docker, PostgreSQL, .NET SDK, R2 access key, or application secret is required.
+Local Wrangler uses local D1 and R2 storage. No Docker, PostgreSQL, .NET SDK, or R2 access key is required.
+
+Copy `.dev.vars.example` to `.dev.vars` and replace its placeholder with a random value of at
+least 32 characters before testing account registration locally. `.dev.vars` is ignored by Git.
 
 ## Cloudflare deployment
 
@@ -123,9 +126,13 @@ Authenticate Wrangler, apply the production schema once, and deploy:
 
 ```bash
 npx wrangler login
+npx wrangler secret put PASSWORD_PEPPER
 npm run db:migrate:remote
 npm run deploy
 ```
+
+`PASSWORD_PEPPER` must be a random value of at least 32 characters. Store it only as a Cloudflare
+secret: changing or deleting it will prevent existing accounts from signing in.
 
 The D1 database ID and R2 bucket name are resource identifiers, not credentials. A Worker accesses both through bindings, so R2 S3 access keys must not be committed or configured for this application.
 
@@ -144,6 +151,8 @@ GitHub Actions runs the same lint, test, frontend build, Worker type-check, and 
 ## Security and privacy
 
 - Passwords are derived with salted PBKDF2-SHA-256 hashes and never stored in plaintext.
+- A private HMAC pepper protects password material separately from D1.
+- Cloudflare's rate-limit binding restricts registration and login attempts per username.
 - Random session tokens are stored only as SHA-256 hashes in D1.
 - The browser receives the session token only through an HttpOnly cookie.
 - State-changing API requests enforce a same-origin check.

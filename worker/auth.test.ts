@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  PASSWORD_ITERATIONS,
   getCookie,
   hashPassword,
   isValidPassword,
@@ -9,6 +10,8 @@ import {
 } from "./auth";
 
 describe("Worker authentication helpers", () => {
+  const pepper = "test-only-pepper-with-more-than-32-characters";
+
   it("normalizes and validates portfolio usernames", () => {
     expect(normalizeUsername("  Jason.dev ")).toBe("JASON.DEV");
     expect(isValidUsername("Jason_1511")).toBe(true);
@@ -19,9 +22,28 @@ describe("Worker authentication helpers", () => {
 
   it("hashes and verifies a password", async () => {
     const salt = "00112233445566778899aabbccddeeff";
-    const hash = await hashPassword("portfolio-password", salt, 1_000);
-    expect(await verifyPassword("portfolio-password", salt, hash, 1_000)).toBe(true);
-    expect(await verifyPassword("wrong-password", salt, hash, 1_000)).toBe(false);
+    const hash = await hashPassword("portfolio-password", salt, pepper);
+    expect(
+      await verifyPassword(
+        "portfolio-password",
+        salt,
+        hash,
+        PASSWORD_ITERATIONS,
+        pepper,
+      ),
+    ).toBe(true);
+    expect(
+      await verifyPassword("wrong-password", salt, hash, PASSWORD_ITERATIONS, pepper),
+    ).toBe(false);
+    expect(
+      await verifyPassword(
+        "portfolio-password",
+        salt,
+        hash,
+        PASSWORD_ITERATIONS,
+        "different-test-pepper-with-32-characters",
+      ),
+    ).toBe(false);
   });
 
   it("reads a named cookie", () => {

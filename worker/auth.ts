@@ -1,7 +1,9 @@
 import type { Env, SessionUser, User } from "./types";
 
 export const SESSION_COOKIE = "analytics_session";
-export const PASSWORD_ITERATIONS = 210_000;
+// The Workers Free plan has a 10 ms CPU limit per request. Keep the Web Crypto
+// password derivation within that budget while retaining a per-user random salt.
+export const PASSWORD_ITERATIONS = 10_000;
 const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 7;
 const encoder = new TextEncoder();
 
@@ -25,11 +27,24 @@ export function randomHex(byteLength: number) {
 export async function hashPassword(
   password: string,
   saltHex: string,
+  pepper: string,
   iterations = PASSWORD_ITERATIONS,
 ) {
+  const pepperKey = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(pepper),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const pepperedPassword = await crypto.subtle.sign(
+    "HMAC",
+    pepperKey,
+    encoder.encode(password),
+  );
   const key = await crypto.subtle.importKey(
     "raw",
-    encoder.encode(password),
+    pepperedPassword,
     "PBKDF2",
     false,
     ["deriveBits"],
@@ -52,8 +67,9 @@ export async function verifyPassword(
   saltHex: string,
   expectedHash: string,
   iterations: number,
+  pepper: string,
 ) {
-  const actual = await hashPassword(password, saltHex, iterations);
+  const actual = await hashPassword(password, saltHex, pepper, iterations);
   if (actual.length !== expectedHash.length) return false;
 
   let difference = 0;

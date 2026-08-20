@@ -22,6 +22,16 @@
       "bucket_name": "react-analytics-dashboard-data"
     }
   ],
+  "ratelimits": [
+    {
+      "name": "AUTH_RATE_LIMITER",
+      "namespace_id": "151101",
+      "simple": {
+        "limit": 5,
+        "period": 60
+      }
+    }
+  ],
   "observability": {
     "enabled": true
   }

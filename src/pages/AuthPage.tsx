@@ -1,9 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { checkUsernameAvailability } from "../api/auth";
+import { USERNAME_HTML_PATTERN, USERNAME_PATTERN } from "../lib/username";
 import { useAuth } from "../state/use-auth";
-
-const USERNAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{2,39}$/;
 
 export default function AuthPage({ mode }: { mode: "login" | "register" }) {
   const { user, isGuest, login, register, continueAsGuest } = useAuth();
@@ -83,7 +82,7 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
               autoComplete="username"
               minLength={isRegister ? 3 : undefined}
               maxLength={isRegister ? 40 : 80}
-              pattern={isRegister ? "[A-Za-z0-9][A-Za-z0-9._-]{2,39}" : undefined}
+              pattern={isRegister ? USERNAME_HTML_PATTERN : undefined}
               required
               value={username}
               onChange={(event) => setUsername(event.target.value)}

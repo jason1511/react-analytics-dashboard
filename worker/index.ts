@@ -74,11 +74,23 @@ async function handleAuth(request: Request, env: Env, url: URL) {
     if (request.method !== "POST") return methodNotAllowed();
     const body = await readCredentials(request);
     if (!body) return problem("Enter a valid username and password.", 400);
+    if (!hasValidPasswordPepper(env)) return authConfigurationError();
+    if (!(await allowAuthAttempt(env, "register", body.username))) {
+      return problem("Too many account attempts. Please wait a minute and try again.", 429);
+    }
 
     const username = body.username.trim();
+    const normalizedUsername = normalizeUsername(username);
+    const existing = await env.DB.prepare(
+      "SELECT 1 FROM users WHERE normalized_username = ? LIMIT 1",
+    )
+      .bind(normalizedUsername)
+      .first();
+    if (existing) return problem("That username is already taken.", 409);
+
     const user: User = { id: crypto.randomUUID(), username };
     const salt = randomHex(16);
-    const passwordHash = await hashPassword(body.password, salt);
+    const passwordHash = await hashPassword(body.password, salt, env.PASSWORD_PEPPER);
     const now = new Date().toISOString();
     try {
       await env.DB.prepare(
@@ -89,7 +101,7 @@ async function handleAuth(request: Request, env: Env, url: URL) {
         .bind(
           user.id,
           username,
-          normalizeUsername(username),
+          normalizedUsername,
           passwordHash,
           salt,
           PASSWORD_ITERATIONS,
@@ -115,6 +127,10 @@ async function handleAuth(request: Request, env: Env, url: URL) {
     if (request.method !== "POST") return methodNotAllowed();
     const body = await readCredentials(request, false);
     if (!body) return problem("Username or password is incorrect.", 401);
+    if (!hasValidPasswordPepper(env)) return authConfigurationError();
+    if (!(await allowAuthAttempt(env, "login", body.username))) {
+      return problem("Too many sign-in attempts. Please wait a minute and try again.", 429);
+    }
 
     const stored = await env.DB.prepare(
       `SELECT id, username, password_hash, password_salt, password_iterations
@@ -129,6 +145,7 @@ async function handleAuth(request: Request, env: Env, url: URL) {
         stored.password_salt,
         stored.password_hash,
         stored.password_iterations,
+        env.PASSWORD_PEPPER,
       ))
     ) {
       return problem("Username or password is incorrect.", 401);
@@ -498,4 +515,19 @@ function isTrustedMutation(request: Request, url: URL) {
   } catch {
     return false;
   }
+}
+
+async function allowAuthAttempt(env: Env, action: string, username: string) {
+  const key = `${action}:${normalizeUsername(username)}`;
+  const result = await env.AUTH_RATE_LIMITER.limit({ key });
+  return result.success;
+}
+
+function hasValidPasswordPepper(env: Env) {
+  return typeof env.PASSWORD_PEPPER === "string" && env.PASSWORD_PEPPER.length >= 32;
+}
+
+function authConfigurationError() {
+  console.error("PASSWORD_PEPPER is missing or shorter than 32 characters.");
+  return problem("Account authentication is temporarily unavailable.", 503);
 }
