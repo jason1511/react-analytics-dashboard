@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDataset } from "../state/use-dataset";
 import BarCountChart from "../components/charts/BarCountChart";
+import SmartChart from "../components/charts/SmartChart";
 import EmptyState from "../components/EmptyState";
 import {
   formatNumber,
@@ -140,7 +141,7 @@ function ColumnStatisticGrid({ statistics }: { statistics: ColumnStatistics }) {
 /* ---------- page ---------- */
 
 export default function DashboardPage() {
-  const { rows, columns, fileName, columnOverrides } = useDataset();
+  const { rows, columns, fileName, columnOverrides, pinnedCharts, unpinChart } = useDataset();
 
   const datasetStatistics = useMemo(
     () => calculateDatasetStatistics(columns, rows, columnOverrides),
@@ -246,6 +247,41 @@ export default function DashboardPage() {
           hint="Higher is better"
         />
       </div>
+
+      {pinnedCharts.length ? (
+        <section className="space-y-3">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                Pinned dashboard
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Recommended and custom charts saved for the current dataset session.
+              </p>
+            </div>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {pinnedCharts.length} chart{pinnedCharts.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {pinnedCharts.map((chart) => (
+              <SmartChart
+                key={chart.id}
+                config={chart}
+                rows={rows}
+                action={
+                  <button
+                    onClick={() => unpinChart(chart.id)}
+                    className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    Remove
+                  </button>
+                }
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Dataset-level statistics */}
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">

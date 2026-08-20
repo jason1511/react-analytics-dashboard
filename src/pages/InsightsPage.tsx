@@ -6,7 +6,7 @@ import { calculateDatasetStatistics } from "../lib/statistics";
 import { useDataset } from "../state/use-dataset";
 
 export default function InsightsPage() {
-  const { columns, rows, fileName, columnOverrides } = useDataset();
+  const { columns, rows, fileName, columnOverrides, pinnedCharts, pinChart, unpinChart } = useDataset();
   const statistics = useMemo(
     () => calculateDatasetStatistics(columns, rows, columnOverrides),
     [columnOverrides, columns, rows],
@@ -40,19 +40,34 @@ export default function InsightsPage() {
 
       {recommendations.length ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          {recommendations.map((recommendation) => (
-            <SmartChart
-              key={recommendation.id}
-              config={recommendation}
-              rows={rows}
-              reason={recommendation.reason}
-              action={
-                <span className="shrink-0 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200">
-                  {Math.round(recommendation.confidence * 100)}% match
-                </span>
-              }
-            />
-          ))}
+          {recommendations.map((recommendation) => {
+            const pinned = pinnedCharts.some((chart) => chart.id === recommendation.id);
+            return (
+              <SmartChart
+                key={recommendation.id}
+                config={recommendation}
+                rows={rows}
+                reason={recommendation.reason}
+                action={
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="hidden rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200 sm:inline-flex">
+                      {Math.round(recommendation.confidence * 100)}% match
+                    </span>
+                    <button
+                      onClick={() => (pinned ? unpinChart(recommendation.id) : pinChart(recommendation))}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                        pinned
+                          ? "border-slate-300 bg-slate-900 text-white dark:border-slate-600 dark:bg-slate-100 dark:text-slate-900"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {pinned ? "Pinned" : "Add to dashboard"}
+                    </button>
+                  </div>
+                }
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
