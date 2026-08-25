@@ -1,16 +1,97 @@
-Date,Region,Product,Category,Salesperson,Units,Revenue
-2024-01-05,VIC,E-Bike X1,E-Bike,Alex,2,4200
-2024-01-06,NSW,E-Bike X1,E-Bike,Jamie,1,2100
-2024-01-07,VIC,E-Bike X2,E-Bike,Sam,3,6900
-2024-01-08,QLD,City Bike C1,Bike,Alex,4,3200
-2024-01-09,VIC,Helmet Pro,Accessory,Jamie,6,900
-2024-01-10,NSW,E-Bike X2,E-Bike,Sam,2,4600
-2024-01-11,QLD,City Bike C2,Bike,Alex,1,900
-2024-01-12,VIC,Helmet Basic,Accessory,Jamie,10,1200
-2024-01-13,NSW,Lock Secure,Accessory,Sam,5,750
-2024-01-14,VIC,E-Bike X1,E-Bike,Alex,1,2100
-2024-01-15,QLD,E-Bike X2,E-Bike,Jamie,2,4600
-2024-01-16,NSW,City Bike C1,Bike,Sam,3,2400
-2024-01-17,VIC,Lock Secure,Accessory,Alex,4,600
-2024-01-18,QLD,Helmet Pro,Accessory,Jamie,2,300
-2024-01-19,NSW,E-Bike X1,E-Bike,Sam,1,2100
+Order ID,Order Date,Region,Product,Category,Channel,Salesperson,Units,Revenue,Unit Price,Discount Percent,Returned,Customer Note,Currency
+ORD-2025-0001,2025-01-02,VIC,E-Bike X1,E-Bike,Showroom,Alex,1,2100,2100,0,Yes,,AUD
+ORD-2025-0002,2025-01-05,QLD,Lock Secure,Accessory,Online,Morgan,2,150,75,0,No,Asked for assembly support; Thursday; Cairns,AUD
+ORD-2025-0003,2025-01-08,WA,Helmet Pro,Accessory,Phone,Sam,3,428,150,5,No,Repeat customer order; after 5 pm; Toowoomba,AUD
+ORD-2025-0004,2025-01-11,NSW,City Bike C2,Bike,Showroom,Jamie,4,3240,900,10,No,Purchased during showroom visit; Wednesday; Newcastle,AUD
+ORD-2025-0005,2025-01-14,SA,City Bike C1,Bike,Online,Alex,5,3400,800,15,No,Delivery address confirmed; weekend; Footscray,AUD
+ORD-2025-0006,2025-01-17,VIC,E-Bike X2,E-Bike,Phone,Morgan,6,13800,2300,0,No,No special request; Tuesday; Geelong,AUD
+ORD-2025-0007,2025-01-20,QLD,E-Bike X1,E-Bike,Showroom,Sam,1,2100,2100,0,No,Helmet sizing discussed; Friday; Adelaide CBD,AUD
+ORD-2025-0008,2025-01-23,WA,Lock Secure,Accessory,Online,Jamie,2,143,75,5,No,"Customer requested a call, before delivery; Monday; Ballarat",AUD
+ORD-2025-0009,2025-02-02,NSW,Lock Secure,Accessory,Phone,Alex,3,203,75,10,No,Requested morning delivery; Thursday; South Brisbane,AUD
+ORD-2025-0010,2025-02-05,SA,Helmet Pro,Accessory,Showroom,Morgan,4,510,150,15,Yes,Asked for assembly support; after 5 pm; Wollongong,AUD
+ORD-2025-0011,2025-02-08,VIC,City Bike C2,Bike,Online,Sam,5,4500,900,0,No,Repeat customer order; Wednesday; Parramatta,AUD
+ORD-2025-0012,2025-02-11,QLD,City Bike C1,Bike,Phone,Jamie,6,4800,800,0,No,Purchased during showroom visit; weekend; Fremantle,AUD
+ORD-2025-0013,2025-02-14,WA,E-Bike X2,E-Bike,Showroom,Alex,1,2185,2300,5,No,Delivery address confirmed; Tuesday; Richmond,AUD
+ORD-2025-0014,2025-02-17,NSW,E-Bike X1,E-Bike,Online,Morgan,2,3780,2100,10,No,,AUD
+ORD-2025-0015,2025-02-20,SA,Lock Secure,Accessory,Phone,Sam,3,191,75,15,No,Helmet sizing discussed; Monday; Toowoomba,AUD
+ORD-2025-0016,2025-02-23,VIC,Helmet Pro,Accessory,Showroom,Jamie,4,600,150,0,No,"Customer requested a call, before delivery; Thursday; Newcastle",AUD
+ORD-2025-0017,2025-03-02,QLD,Helmet Pro,Accessory,Online,Alex,5,750,150,0,No,Requested morning delivery; after 5 pm; Footscray,AUD
+ORD-2025-0018,2025-03-05,WA,City Bike C2,Bike,Phone,Morgan,6,5130,900,5,No,Asked for assembly support; Wednesday; Geelong,AUD
+ORD-2025-0019,2025-03-08,NSW,City Bike C1,Bike,Showroom,Sam,1,720,800,10,Yes,Repeat customer order; weekend; Adelaide CBD,AUD
+ORD-2025-0020,2025-03-11,SA,E-Bike X2,E-Bike,Online,,2,3910,2300,15,No,Purchased during showroom visit; Tuesday; Ballarat,AUD
+ORD-2025-0021,2025-03-14,VIC,E-Bike X1,E-Bike,Phone,Alex,3,6300,2100,0,No,Delivery address confirmed; Friday; South Brisbane,AUD
+ORD-2025-0022,2025-03-17,QLD,Lock Secure,Accessory,Showroom,Morgan,4,300,75,0,No,No special request; Monday; Wollongong,AUD
+ORD-2025-0023,2025-03-20,WA,Helmet Pro,Accessory,Online,Sam,5,713,150,5,No,Helmet sizing discussed; Thursday; Parramatta,AUD
+ORD-2025-0024,2025-03-23,NSW,City Bike C2,Bike,Phone,Jamie,6,4860,900,10,No,"Customer requested a call, before delivery; after 5 pm; Fremantle",AUD
+ORD-2025-0025,2025-04-02,SA,City Bike C2,Bike,Showroom,Alex,1,765,900,15,No,Requested morning delivery; Wednesday; Richmond,AUD
+ORD-2025-0026,2025-04-05,VIC,City Bike C1,Bike,Online,Morgan,2,1600,800,0,No,Asked for assembly support; weekend; Cairns,AUD
+ORD-2025-0027,2025-04-08,QLD,E-Bike X2,E-Bike,Phone,Sam,3,6900,2300,0,No,,AUD
+ORD-2025-0028,2025-04-11,WA,E-Bike X1,E-Bike,Showroom,Jamie,4,7980,2100,5,Yes,Purchased during showroom visit; Friday; Newcastle,AUD
+ORD-2025-0029,2025-04-14,NSW,Lock Secure,Accessory,Online,Alex,5,338,75,10,No,Delivery address confirmed; Monday; Footscray,AUD
+ORD-2025-0030,2025-04-17,SA,Helmet Pro,Accessory,Phone,Morgan,6,765,150,15,No,No special request; Thursday; Geelong,AUD
+ORD-2025-0031,2025-04-20,VIC,City Bike C2,Bike,Showroom,Sam,1,900,900,0,No,Helmet sizing discussed; after 5 pm; Adelaide CBD,AUD
+ORD-2025-0032,2025-04-23,QLD,City Bike C1,Bike,Online,Jamie,2,1600,800,0,No,"Customer requested a call, before delivery; Wednesday; Ballarat",AUD
+ORD-2025-0033,2025-05-02,vic,City Bike C1,Bike,Phone,Alex,3,2280,800,5,No,Requested morning delivery; weekend; South Brisbane,AUD
+ORD-2025-0034,2025-05-05,NSW,E-Bike X2,E-Bike,Showroom,Morgan,4,8280,2300,10,No,Asked for assembly support; Tuesday; Wollongong,AUD
+ORD-2025-0035,2025-05-08,SA,E-Bike X1,E-Bike,Online,Sam,5,8925,2100,15,No,Repeat customer order; Friday; Parramatta,AUD
+ORD-2025-0036,2025-05-11,VIC,Lock Secure,Accessory,Phone,Jamie,6,450,75,0,No,Purchased during showroom visit; Monday; Fremantle,AUD
+ORD-2025-0037,2025-05-14,QLD,Helmet Pro,Accessory,Showroom,Alex,1,150,150,0,Yes,Delivery address confirmed; Thursday; Richmond,AUD
+ORD-2025-0038,2025-05-17,WA,City Bike C2,Bike,Online,Morgan,2,1710,900,5,No,No special request; after 5 pm; Cairns,AUD
+ORD-2025-0039,2025-05-20,NSW,City Bike C1,Bike,Phone,Sam,3,2160,800,10,No,Helmet sizing discussed; Wednesday; Toowoomba,AUD
+ORD-2025-0040,2025-05-23,SA,E-Bike X2,E-Bike,Showroom,Jamie,4,7820,2300,15,No,,AUD
+ORD-2025-0041,2025-06-02,VIC,E-Bike X2,E-Bike,Online,Alex,5,11500,2300,0,No,Requested morning delivery; Tuesday; Footscray,AUD
+ORD-2025-0042,2025-06-05,QLD,E-Bike X1,E-Bike,Phone,Morgan,6,12600,2100,0,No,Asked for assembly support; Friday; Geelong,AUD
+ORD-2025-0043,2025-06-08,WA,Lock Secure,Accessory,Showroom,Sam,1,71,75,5,No,Repeat customer order; Monday; Adelaide CBD,AUD
+ORD-2025-0044,2025-06-11,NSW,Helmet Pro,Accessory,Online,Jamie,unknown,270,150,10,No,Purchased during showroom visit; Thursday; Ballarat,AUD
+ORD-2025-0045,2025-06-14,SA,City Bike C2,Bike,Phone,Alex,3,2295,900,15,No,Delivery address confirmed; after 5 pm; South Brisbane,AUD
+ORD-2025-0046,2025-06-17,VIC,City Bike C1,Bike,Showroom,Morgan,4,3200,800,0,Yes,No special request; Wednesday; Wollongong,AUD
+ORD-2025-0047,2025-06-20,QLD,E-Bike X2,E-Bike,Online,Sam,5,11500,2300,0,No,Helmet sizing discussed; weekend; Parramatta,AUD
+ORD-2025-0048,2025-06-23," NSW ",E-Bike X1,E-Bike,Phone,Jamie,6,11970,2100,5,No,"Customer requested a call, before delivery; Tuesday; Fremantle",AUD
+ORD-2025-0049,2025-07-02,NSW,E-Bike X1,E-Bike,Showroom,Alex,1,1890,2100,10,No,Requested morning delivery; Friday; Richmond,AUD
+ORD-2025-0050,2025-07-05,SA,Lock Secure,Accessory,Online,Morgan,2,128,75,15,No,Asked for assembly support; Monday; Cairns,AUD
+ORD-2025-0051,2025-07-08,VIC,Helmet Pro,Accessory,Phone,Sam,3,450,150,0,No,Repeat customer order; Thursday; Toowoomba,AUD
+ORD-2025-0052,2025-07-11,QLD,City Bike C2,Bike,Showroom,Jamie,4,3600,900,0,No,Purchased during showroom visit; after 5 pm; Newcastle,AUD
+ORD-2025-0053,2025-07-14,WA,City Bike C1,Bike,Online,Alex,5,3800,800,5,No,,AUD
+ORD-2025-0054,2025-07-17,NSW,E-Bike X2,E-Bike,Phone,Morgan,6,12420,2300,10,No,No special request; weekend; Geelong,AUD
+ORD-2025-0055,2025-13-04,SA,E-Bike X1,E-Bike,Showroom,Sam,1,1785,2100,15,Yes,Helmet sizing discussed; Tuesday; Adelaide CBD,AUD
+ORD-2025-0056,2025-07-23,VIC,Lock Secure,Accessory,Online,Jamie,2,150,75,0,No,"Customer requested a call, before delivery; Friday; Ballarat",AUD
+ORD-2025-0057,2025-08-02,QLD,Lock Secure,Accessory,Phone,Alex,3,225,75,0,No,Requested morning delivery; Monday; South Brisbane,AUD
+ORD-2025-0058,2025-08-05,WA,Helmet Pro,Accessory,Showroom,Morgan,4,570,150,5,No,Asked for assembly support; Thursday; Wollongong,AUD
+ORD-2025-0059,2025-08-08,NSW,City Bike C2,Bike,Online,Sam,5,4050,900,10,No,Repeat customer order; after 5 pm; Parramatta,AUD
+ORD-2025-0060,2025-08-11,SA,City Bike C1,Bike,Phone,Jamie,6,4080,800,15,No,Purchased during showroom visit; Wednesday; Fremantle,AUD
+ORD-2025-0061,2025-08-14,VIC,E-Bike X2,E-Bike,Showroom,,1,2300,2300,0,No,Delivery address confirmed; weekend; Richmond,AUD
+ORD-2025-0062,2025-08-17,QLD,E-Bike X1,E-Bike,Online,Morgan,2,4200,2100,0,No,No special request; Tuesday; Cairns,AUD
+ORD-2025-0063,2025-08-20,WA,Lock Secure,Accessory,Phone,Sam,3,214,75,5,No,Helmet sizing discussed; Friday; Toowoomba,AUD
+ORD-2025-0064,2025-08-23,NSW,Helmet Pro,Accessory,Showroom,Jamie,4,540,150,10,Yes,"Customer requested a call, before delivery; Monday; Newcastle",AUD
+ORD-2025-0065,2025-09-02,SA,Helmet Pro,Accessory,Online,Alex,5,638,150,15,No,Requested morning delivery; Thursday; Footscray,AUD
+ORD-2025-0066,2025-09-05,VIC,City Bike C2,Bike,Phone,Morgan,6,5400,900,0,No,,AUD
+ORD-2025-0067,2025-09-08,QLD,City Bike C1,Bike,Showroom,Sam,1,800,800,0,No,Repeat customer order; Wednesday; Adelaide CBD,AUD
+ORD-2025-0068,2025-09-11,WA,E-Bike X2,E-Bike,Online,Jamie,2,4370,2300,5,No,Purchased during showroom visit; weekend; Ballarat,AUD
+ORD-2025-0069,2025-09-14,NSW,E-Bike X1,E-Bike,Phone,Alex,3,5670,2100,10,No,Delivery address confirmed; Tuesday; South Brisbane,AUD
+ORD-2025-0070,2025-09-17,SA,Lock Secure,Accessory,Showroom,Morgan,12,765,75,15,No,No special request; Friday; Wollongong,AUD
+ORD-2025-0071,2025-09-20,VIC,Helmet Pro,Accessory,Online,Sam,5,750,150,0,No,Helmet sizing discussed; Monday; Parramatta,AUD
+ORD-2025-0072,2025-09-23,QLD,City Bike C2,Bike,Phone,Jamie,6,5400,900,0,No,"Customer requested a call, before delivery; Thursday; Fremantle",AUD
+ORD-2025-0073,2025-10-02,WA,City Bike C2,Bike,Showroom,Alex,1,855,900,5,Yes,Requested morning delivery; after 5 pm; Richmond,AUD
+ORD-2025-0074,2025-10-05,NSW,City Bike C1,Bike,Online,Morgan,2,1440,800,10,No,Asked for assembly support; Wednesday; Cairns,AUD
+ORD-2025-0075,2025-10-08,SA,E-Bike X2,E-Bike,Phone,Sam,3,5865,2300,15,No,Repeat customer order; weekend; Toowoomba,AUD
+ORD-2025-0076,2025-10-11,VIC,E-Bike X1,E-Bike,Showroom,Jamie,4,8400,2100,0,No,Purchased during showroom visit; Tuesday; Newcastle,AUD
+ORD-2025-0077,2025-10-14,QLD,Lock Secure,Accessory,Online,Alex,5,375,75,0,No,Delivery address confirmed; Friday; Footscray,AUD
+ORD-2025-0078,2025-10-17,WA,Helmet Pro,Accessory,Phone,Morgan,6,855,150,5,No,No special request; Monday; Geelong,AUD
+ORD-2025-0079,2025-10-20,NSW,City Bike C2,Bike,Showroom,Sam,1,810,900,10,No,,AUD
+ORD-2025-0080,2025-10-23,SA,City Bike C1,Bike,Online,Jamie,2,1360,800,15,No,"Customer requested a call, before delivery; after 5 pm; Ballarat",AUD
+ORD-2025-0081,2025-11-02,VIC,City Bike C1,Bike,Phone,Alex,3,2400,800,0,No,Requested morning delivery; Wednesday; South Brisbane,AUD
+ORD-2025-0082,2025-11-05,QLD,E-Bike X2,E-Bike,Showroom,Morgan,4,9200,2300,0,Yes,Asked for assembly support; weekend; Wollongong,AUD
+ORD-2025-0083,2025-11-08,WA,E-Bike X1,E-Bike,Online,Sam,5,9975,2100,5,No,Repeat customer order; Tuesday; Parramatta,AUD
+ORD-2025-0084,2025-11-11,NSW,Lock Secure,Accessory,Phone,Jamie,6,405,75,10,No,Purchased during showroom visit; Friday; Fremantle,AUD
+ORD-2025-0085,2025-11-14,SA,Helmet Pro,Accessory,Showroom,Alex,1,128,150,15,No,Delivery address confirmed; Monday; Richmond,AUD
+ORD-2025-0086,2025-11-17,VIC,City Bike C2,Bike,Online,Morgan,2,1800,900,0,No,No special request; Thursday; Cairns,AUD
+ORD-2025-0087,2025-11-20,QLD,City Bike C1,Bike,Phone,Sam,3,2400,800,0,No,Helmet sizing discussed; after 5 pm; Toowoomba,AUD
+ORD-2025-0088,2025-11-23,WA,E-Bike X2,E-Bike,Showroom,Jamie,4,8740,2300,5,No,"Customer requested a call, before delivery; Wednesday; Newcastle",AUD
+ORD-2025-0089,2025-12-02,NSW,E-Bike X2,E-Bike,Online,Alex,5,10350,2300,10,No,Requested morning delivery; weekend; Footscray,AUD
+ORD-2025-0090,2025-12-05,SA,E-Bike X1,E-Bike,Phone,Morgan,6,10710,2100,15,No,Asked for assembly support; Tuesday; Geelong,AUD
+ORD-2025-0091,2025-12-08,VIC,Lock Secure,Accessory,Showroom,Sam,1,75,75,0,Yes,Repeat customer order; Friday; Adelaide CBD,AUD
+ORD-2025-0092,2025-12-11,QLD,Helmet Pro,Accessory,Online,Jamie,2,300,150,0,No,,AUD
+ORD-2025-0093,2025-12-14,WA,City Bike C2,Bike,Phone,Alex,3,2565,900,5,No,Delivery address confirmed; Thursday; South Brisbane,AUD
+ORD-2025-0094,2025-12-17,NSW,City Bike C1,Bike,Showroom,Morgan,4,2880,800,10,No,No special request; after 5 pm; Wollongong,AUD
+ORD-2025-0095,2025-12-20,SA,E-Bike X2,E-Bike,Online,Sam,5,9775,2300,15,No,Helmet sizing discussed; Wednesday; Parramatta,AUD
+ORD-2025-0010,2025-02-05,SA,Helmet Pro,Accessory,Showroom,Morgan,4,510,150,15,Yes,Asked for assembly support; after 5 pm; Wollongong,AUD

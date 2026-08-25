@@ -26,6 +26,7 @@ A full-stack CSV analytics portfolio application built on React and Cloudflare. 
 - Interactive Recharts visualisations
 - Search and multi-column filtering
 - Responsive light and dark interface
+- Downloadable 12-month sales showcase with deliberate examples for profiling and quality analysis
 
 ## Cloudflare-native stack
 

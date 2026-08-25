@@ -125,6 +125,9 @@ export default function UploadPage() {
               >
                 Download mock CSV
               </a>
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Includes 12 months of sales and a few deliberate quality issues to explore.
+              </div>
             </div>
           </div>
 
