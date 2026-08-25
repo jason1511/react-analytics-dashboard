@@ -1,6 +1,6 @@
 # React Analytics Dashboard
 
-A full-stack CSV analytics portfolio application built on React and Cloudflare. Users can create a username-only account, persist private datasets, and reopen them later. Guests receive the complete analytics demo without uploading or saving their data.
+A full-stack tabular-data analytics portfolio application built on React and Cloudflare. Users can create a username-only account, import common data files, persist private datasets, and reopen them later. Guests receive the complete analytics demo without uploading or saving their data.
 
 ## Live application
 
@@ -8,7 +8,8 @@ A full-stack CSV analytics portfolio application built on React and Cloudflare. 
 
 ## Features
 
-- Upload and validate CSV files up to 10 MB
+- Import and validate CSV, TSV, JSON, and Excel `.xlsx` files up to 10 MB
+- Normalize every supported format into one consistent tabular data model
 - Username and password accounts with live username availability checks
 - Secure opaque sessions stored in HttpOnly, Secure, SameSite cookies
 - Guest mode with full analytics and browser-only data
@@ -35,11 +36,11 @@ A full-stack CSV analytics portfolio application built on React and Cloudflare. 
 | Interface | React 19, TypeScript, Vite, Tailwind CSS | Upload, analysis, exploration, and charts |
 | API | Cloudflare Workers | Authentication and owner-scoped dataset endpoints |
 | Relational data | Cloudflare D1 | Users, password hashes, sessions, and dataset metadata |
-| Object storage | Cloudflare R2 | Private CSV file contents |
+| Object storage | Cloudflare R2 | Private normalized dataset contents |
 | Hosting | Workers Static Assets | React SPA and API in one deployment |
 | Monitoring | Workers Observability | Request logs and runtime errors |
 
-Interactive analysis remains client-side for a responsive experience. The Worker validates every saved upload, D1 stores its metadata, and R2 stores its original CSV object. Guest uploads never leave the browser.
+Interactive analysis and source-format conversion remain client-side for a responsive experience. CSV and TSV headers, JSON object properties, and the first worksheet in an XLSX workbook become columns in the same internal model. Before an authenticated dataset is saved, the browser converts it to normalized CSV; the Worker validates that representation, D1 stores its metadata and original filename, and R2 stores the private normalized object. Guest imports never leave the browser.
 
 ## Architecture
 
@@ -48,12 +49,12 @@ flowchart TD
     Browser[React browser app]
     Worker[Cloudflare Worker API]
     D1[(D1 metadata)]
-    R2[(R2 CSV objects)]
+    R2[(R2 normalized datasets)]
 
     Browser -->|Account and dataset requests| Worker
     Worker --> D1
     Worker --> R2
-    Browser -->|Guest CSV stays local| Browser
+    Browser -->|Guest data stays local| Browser
 ```
 
 ## Application routes
@@ -63,7 +64,7 @@ flowchart TD
 | `/login` | Sign in or continue as a guest |
 | `/register` | Create a username and password account |
 | `/datasets` | Reopen or delete saved datasets |
-| `/upload` | Upload and parse a CSV |
+| `/upload` | Import CSV, TSV, JSON, or XLSX data |
 | `/dashboard` | Review KPIs, quality metrics, aggregations, and charts |
 | `/profile` | Inspect every column, review statistics, and correct inferred types or roles |
 | `/quality` | Review scored data-quality issues and inspect affected source rows |
@@ -81,8 +82,8 @@ flowchart TD
 | `GET /api/auth/me` | Restore the current user |
 | `GET /api/auth/username-available` | Check a normalized username |
 | `GET /api/datasets` | List the current user's datasets |
-| `POST /api/datasets/upload` | Validate and persist a CSV |
-| `GET /api/datasets/:id/content` | Read an owned CSV from R2 |
+| `POST /api/datasets/upload` | Validate and persist a normalized dataset |
+| `GET /api/datasets/:id/content` | Read an owned normalized dataset from R2 |
 | `PATCH /api/datasets/:id/name` | Rename an owned dataset |
 | `DELETE /api/datasets/:id` | Delete owned metadata and object data |
 
@@ -178,7 +179,7 @@ GitHub Actions runs the same lint, test, frontend build, Worker type-check, and 
 - State-changing API requests enforce a same-origin check.
 - Every dataset query includes the authenticated owner's ID.
 - R2 objects use owner-prefixed, generated keys rather than user-controlled paths.
-- Guest CSV files remain in browser memory and are never sent to the API.
+- Guest data files remain in browser memory and are never sent to the API.
 
 ## Project structure
 
@@ -192,7 +193,9 @@ wrangler.jsonc    D1, R2, assets, and observability bindings
 
 ## Current limitations
 
-- CSV only
+- Tabular CSV, TSV, flat JSON records, and `.xlsx` workbooks only
+- The first worksheet is imported from an Excel workbook
+- Nested JSON values are retained as JSON text rather than expanded into multiple tables
 - Intended for small and moderate datasets up to 10 MB
 - No password recovery because accounts intentionally do not require email
 - No collaborative dashboards or shared datasets
@@ -205,7 +208,7 @@ wrangler.jsonc    D1, R2, assets, and observability bindings
 - Relational modelling and migrations with D1
 - Private object storage with R2 bindings
 - Password hashing, opaque sessions, and ownership isolation
-- Multipart upload handling and server-side CSV validation
+- Multi-format browser parsing, normalized persistence, multipart upload handling, and server-side validation
 - Client-side analytics, filtering, aggregation, and visualisation
 - Guest-mode privacy and progressive enhancement
 - Full-stack CI and single-deployment architecture

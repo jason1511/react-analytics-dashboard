@@ -103,7 +103,7 @@ export default function ExplorePage() {
       <div className="space-y-2">
         <EmptyState
           title="Explore Data"
-          description="No dataset loaded yet. Upload a CSV to search and filter your data."
+          description="No dataset loaded yet. Import a data file to search and filter your data."
         />
       </div>
     );

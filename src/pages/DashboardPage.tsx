@@ -210,7 +210,7 @@ export default function DashboardPage() {
     return (
       <EmptyState
         title="Dashboard"
-        description="No dataset loaded yet. Upload a CSV to see summary stats and charts."
+        description="No dataset loaded yet. Import a data file to see summary stats and charts."
       />
     );
   }

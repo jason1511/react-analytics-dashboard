@@ -26,10 +26,11 @@ export async function listDatasets(page = 1, pageSize = 50) {
   );
 }
 
-export async function uploadDataset(file: File, name?: string) {
+export async function uploadDataset(file: File, name?: string, originalFileName?: string) {
   const form = new FormData();
   form.append("file", file);
   if (name?.trim()) form.append("name", name.trim());
+  if (originalFileName?.trim()) form.append("originalFileName", originalFileName.trim());
 
   return apiRequest<DatasetSummary>("/api/datasets/upload", {
     method: "POST",

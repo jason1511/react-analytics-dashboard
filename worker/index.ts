@@ -305,19 +305,19 @@ async function createDataset(request: Request, env: Env, user: User) {
 async function uploadDataset(request: Request, env: Env, user: User) {
   const contentLength = Number(request.headers.get("content-length") ?? 0);
   if (contentLength > MAX_FILE_SIZE + 1024 * 1024) {
-    return problem("The CSV file exceeds the 10 MB limit.", 413);
+    return problem("The imported dataset exceeds the 10 MB limit.", 413);
   }
 
   const form = await request.formData();
   const value = form.get("file");
   if (!(value instanceof File) || value.size === 0) {
-    return problem("Choose a non-empty CSV file.", 400);
+    return problem("Choose a non-empty data file.", 400);
   }
   if (value.size > MAX_FILE_SIZE) {
-    return problem("The CSV file exceeds the 10 MB limit.", 400);
+    return problem("The imported dataset exceeds the 10 MB limit.", 400);
   }
   if (!value.name.toLowerCase().endsWith(".csv")) {
-    return problem("Only .csv files are supported.", 400);
+    return problem("The saved dataset must use the normalized CSV format.", 400);
   }
 
   const bytes = await value.arrayBuffer();
@@ -325,17 +325,25 @@ async function uploadDataset(request: Request, env: Env, user: User) {
   try {
     inspection = inspectCsv(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   } catch (error) {
-    return problem(error instanceof Error ? error.message : "The CSV is invalid.", 400);
+    return problem(error instanceof Error ? error.message : "The imported dataset is invalid.", 400);
   }
 
   const id = crypto.randomUUID();
   const storageKey = `${user.id}/${id}.csv`;
-  const originalFileName = safeFileName(value.name);
+  const requestedOriginalFileName = form.get("originalFileName");
+  const originalFileName = safeFileName(
+    typeof requestedOriginalFileName === "string" && requestedOriginalFileName.trim()
+      ? requestedOriginalFileName
+      : value.name,
+  );
+  if (!/\.(csv|tsv|json|xlsx)$/i.test(originalFileName)) {
+    return problem("The original file must be CSV, TSV, JSON, or XLSX.", 400);
+  }
   const requestedName = form.get("name");
   const name = normalizeDatasetName(
     typeof requestedName === "string" && requestedName.trim()
       ? requestedName
-      : originalFileName.replace(/\.csv$/i, ""),
+      : originalFileName.replace(/\.(csv|tsv|json|xlsx)$/i, ""),
   );
   if (!name) return problem("Dataset name cannot be blank.", 400);
 
@@ -396,10 +404,11 @@ async function getDatasetContent(env: Env, user: User, id: string) {
 
   const object = await env.DATASETS.get(dataset.storage_key);
   if (!object) return problem("Stored dataset file not found.", 404);
+  const normalizedFileName = dataset.original_file_name.replace(/\.(csv|tsv|json|xlsx)$/i, "") + ".csv";
   return new Response(object.body, {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(dataset.original_file_name)}`,
+      "content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(normalizedFileName)}`,
       "cache-control": "private, no-store",
     },
   });

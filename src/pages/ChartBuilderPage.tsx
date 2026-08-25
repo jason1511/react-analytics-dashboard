@@ -138,7 +138,7 @@ export default function ChartBuilderPage() {
     return (
       <EmptyState
         title="Chart builder"
-        description="No dataset loaded yet. Upload a CSV to create and pin custom visualisations."
+        description="No dataset loaded yet. Import a data file to create and pin custom visualisations."
       />
     );
   }

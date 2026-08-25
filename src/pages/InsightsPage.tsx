@@ -17,7 +17,7 @@ export default function InsightsPage() {
     return (
       <EmptyState
         title="Recommended insights"
-        description="No dataset loaded yet. Upload a CSV to receive explainable chart recommendations."
+        description="No dataset loaded yet. Import a data file to receive explainable chart recommendations."
       />
     );
   }

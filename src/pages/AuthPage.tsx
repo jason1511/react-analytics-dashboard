@@ -144,7 +144,7 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
           Continue as guest
         </button>
         <p className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400">
-          Full analytics demo. Your CSV stays local and is not saved.
+          Full analytics demo. Your imported data stays local and is not saved.
         </p>
 
         <p className="mt-5 text-center text-sm text-slate-600 dark:text-slate-400">

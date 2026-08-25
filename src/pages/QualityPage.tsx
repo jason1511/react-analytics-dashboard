@@ -74,7 +74,7 @@ export default function QualityPage() {
     return (
       <EmptyState
         title="Data quality"
-        description="No dataset loaded yet. Upload a CSV to check missing, duplicated, invalid, inconsistent, and unusual values."
+        description="No dataset loaded yet. Import a data file to check missing, duplicated, invalid, inconsistent, and unusual values."
       />
     );
   }

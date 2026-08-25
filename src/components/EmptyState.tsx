@@ -10,7 +10,7 @@ type Props = {
 export default function EmptyState({
   title,
   description,
-  actionText = "Upload a CSV",
+  actionText = "Upload data",
   actionTo = "/upload",
 }: Props) {
   return (

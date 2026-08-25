@@ -308,7 +308,7 @@ export default function ProfilePage() {
     return (
       <EmptyState
         title="Data profile"
-        description="No dataset loaded yet. Upload a CSV to inspect every column and its statistics."
+        description="No dataset loaded yet. Import a data file to inspect every column and its statistics."
       />
     );
   }

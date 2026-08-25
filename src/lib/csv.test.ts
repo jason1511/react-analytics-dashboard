@@ -17,4 +17,10 @@ describe("parseCsvText", () => {
   it("rejects data without a header", () => {
     expect(() => parseCsvText("")).toThrow("No columns detected");
   });
+
+  it("trims headers and rejects blank or duplicate column names", () => {
+    expect(parseCsvText(" Region ,Revenue\nVIC,4200\n").columns).toEqual(["Region", "Revenue"]);
+    expect(() => parseCsvText("Region, \nVIC,4200\n")).toThrow("Every column must have a header");
+    expect(() => parseCsvText("Region,Region\nVIC,NSW\n")).toThrow();
+  });
 });

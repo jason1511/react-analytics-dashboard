@@ -127,7 +127,7 @@ export default function DatasetsPage() {
             Guest sessions do not save datasets
           </h3>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            You can upload a CSV and use every dashboard and exploration feature, but the file stays in this browser session only.
+            You can import CSV, TSV, JSON, or XLSX data and use every analytics feature, but it stays in this browser session only.
           </p>
           <Link className="mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-slate-100 dark:text-slate-900" to="/upload">
             Try the dashboard
@@ -149,7 +149,7 @@ export default function DatasetsPage() {
             No saved datasets yet
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Upload a CSV to create your first persistent dataset.
+            Import a data file to create your first persistent dataset.
           </p>
         </div>
       ) : (

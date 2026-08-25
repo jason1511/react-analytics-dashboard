@@ -1,7 +1,11 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { uploadDataset } from "../api/datasets";
-import { parseCsvFile } from "../lib/csv";
+import {
+  createNormalizedCsvFile,
+  DATA_FILE_ACCEPT,
+  parseDataFile,
+} from "../lib/data-file";
 import { useDataset } from "../state/use-dataset";
 import { useAuth } from "../state/use-auth";
 
@@ -19,7 +23,7 @@ export default function UploadPage() {
     setIsUploading(true);
 
     try {
-      const parsed = await parseCsvFile(file);
+      const parsed = await parseDataFile(file);
       if (isGuest) {
         setDataset({
           columns: parsed.columns,
@@ -27,7 +31,8 @@ export default function UploadPage() {
           fileName: file.name,
         });
       } else {
-        const saved = await uploadDataset(file);
+        const normalizedFile = createNormalizedCsvFile(parsed, file.name);
+        const saved = await uploadDataset(normalizedFile, undefined, file.name);
         setDataset({
           datasetId: saved.id,
           columns: parsed.columns,
@@ -40,7 +45,7 @@ export default function UploadPage() {
       setError(
         uploadError instanceof Error
           ? uploadError.message
-          : "The CSV file could not be uploaded."
+          : "The data file could not be imported."
       );
     } finally {
       setIsUploading(false);
@@ -63,8 +68,8 @@ export default function UploadPage() {
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400">
             {isGuest
-              ? "Analyse a CSV in this browser. Guest data is never uploaded or saved."
-              : "Upload a CSV once, then reopen it later from Datasets."}
+              ? "Analyse a data file in this browser. Guest data is never uploaded or saved."
+              : "Import CSV, TSV, JSON, or XLSX data, then reopen it later from Datasets."}
           </p>
         </div>
 
@@ -73,14 +78,14 @@ export default function UploadPage() {
           onClick={() => inputRef.current?.click()}
           disabled={isUploading}
         >
-          {isUploading ? "Uploading…" : "Choose CSV"}
+          {isUploading ? "Importing…" : "Choose data file"}
         </button>
       </div>
 
       <input
         ref={inputRef}
         type="file"
-        accept=".csv,text/csv"
+        accept={DATA_FILE_ACCEPT}
         className="hidden"
         disabled={isUploading}
         onChange={(event) => {
@@ -109,10 +114,12 @@ export default function UploadPage() {
         <div className="rounded-xl border-2 border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
           <div className="mx-auto mb-6 max-w-3xl rounded-xl bg-slate-50 p-4 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
             <div className="font-medium text-slate-900 dark:text-slate-100">
-              Supported format
+              Supported formats
             </div>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-left text-slate-600 dark:text-slate-300">
-              <li>CSV with a header row and unique column names</li>
+              <li>CSV or TSV with a header row and unique column names</li>
+              <li>JSON arrays of objects, including common data or records wrappers</li>
+              <li>Excel .xlsx workbooks (the first worksheet is imported)</li>
               <li>Maximum file size: 10 MB</li>
               <li>UTF-8 recommended; quoted commas are supported</li>
             </ul>
@@ -133,11 +140,11 @@ export default function UploadPage() {
 
           <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
             {isUploading
-              ? isGuest ? "Analysing CSV locally…" : "Saving and analysing CSV…"
-              : "Drop CSV here"}
+              ? isGuest ? "Analysing data locally…" : "Importing and saving data…"
+              : "Drop a data file here"}
           </div>
           <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {isUploading ? "Please keep this page open" : "or click Choose CSV"}
+            {isUploading ? "Please keep this page open" : "or click Choose data file"}
           </div>
         </div>
 
