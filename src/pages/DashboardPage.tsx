@@ -1,478 +1,211 @@
-import { useEffect, useMemo, useState } from "react";
-import { useDataset } from "../state/use-dataset";
-import BarCountChart from "../components/charts/BarCountChart";
+import { useMemo, useState, type ReactNode } from "react";
+import {
+  ArrowRight,
+  CircleGauge,
+  Columns3,
+  Filter,
+  Lightbulb,
+  Pin,
+  RotateCcw,
+  Rows3,
+  ShieldCheck,
+  SlidersHorizontal,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 import SmartChart from "../components/charts/SmartChart";
 import EmptyState from "../components/EmptyState";
-import {
-  formatNumber,
-  getCategoryCounts,
-  pickDefaultGroupBy,
-  sumByGroup,
-} from "../lib/analytics";
-import {
-  calculateDatasetStatistics,
-  type ColumnStatistics,
-} from "../lib/statistics";
+import { recommendCharts, type ChartRecommendation } from "../lib/charts";
+import { filterDashboardRows } from "../lib/dashboard";
+import { analyseDataQuality, type QualitySeverity } from "../lib/quality";
+import { calculateDatasetStatistics } from "../lib/statistics";
+import { useDataset } from "../state/use-dataset";
 
-/* ---------- presentational helpers ---------- */
+const controlClass =
+  "mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
 
-function KpiCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
+function KpiCard({ icon, label, value, hint }: { icon: ReactNode; label: string; value: string; hint: string }) {
   return (
-    <div className="rounded-xl bg-white p-4 shadow dark:bg-slate-900">
-      <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">
-        {value}
-      </p>
-      {hint ? (
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</p>
-      ) : null}
-    </div>
+    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">{label}</p>
+        <span className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">{icon}</span>
+      </div>
+      <p className="mt-2 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">{value}</p>
+      <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={hint}>{hint}</p>
+    </article>
   );
 }
 
-function Chip({ children }: { children: React.ReactNode }) {
+function DashboardChart({ recommendation, rows, pinned, onToggle }: { recommendation: ChartRecommendation; rows: Record<string, string>[]; pinned: boolean; onToggle: () => void }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
-      {children}
-    </span>
+    <SmartChart
+      config={recommendation}
+      rows={rows}
+      reason={recommendation.reason}
+      action={
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="hidden rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 sm:inline-flex">{Math.round(recommendation.confidence * 100)}% match</span>
+          <button type="button" onClick={onToggle} aria-pressed={pinned} className={`inline-flex size-8 items-center justify-center rounded-lg border transition ${pinned ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:text-slate-400"}`} title={pinned ? "Remove from pinned charts" : "Pin to dashboard"}>
+            <Pin size={15} aria-hidden="true" />
+          </button>
+        </div>
+      }
+    />
   );
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-function Statistic({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
-      <div className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
-        {label}
-      </div>
-      <div
-        className="mt-0.5 truncate text-sm font-medium text-slate-800 dark:text-slate-200"
-        title={value}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function ColumnStatisticGrid({ statistics }: { statistics: ColumnStatistics }) {
-  const { profile } = statistics;
-
-  if (statistics.identifier) {
-    return (
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Statistic
-          label="Unique"
-          value={`${(statistics.identifier.uniquePercentage * 100).toFixed(1)}%`}
-        />
-        <Statistic
-          label="Repeated values"
-          value={statistics.identifier.duplicateValues.toLocaleString()}
-        />
-      </div>
-    );
-  }
-
-  if (statistics.numeric) {
-    return (
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Statistic label="Minimum" value={formatNumber(statistics.numeric.minimum)} />
-        <Statistic label="Maximum" value={formatNumber(statistics.numeric.maximum)} />
-        <Statistic label="Mean" value={formatNumber(statistics.numeric.mean)} />
-        <Statistic label="Median" value={formatNumber(statistics.numeric.median)} />
-      </div>
-    );
-  }
-
-  if (statistics.date) {
-    return (
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Statistic label="Earliest" value={formatDate(statistics.date.earliest)} />
-        <Statistic label="Latest" value={formatDate(statistics.date.latest)} />
-      </div>
-    );
-  }
-
-  if (statistics.frequencies?.length) {
-    const top = statistics.frequencies[0];
-    return (
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Statistic label="Most common" value={top.value} />
-        <Statistic label="Share" value={`${(top.percentage * 100).toFixed(1)}%`} />
-      </div>
-    );
-  }
-
-  if (statistics.text) {
-    return (
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Statistic label="Average length" value={`${statistics.text.averageLength.toFixed(1)} chars`} />
-        <Statistic
-          label="Length range"
-          value={`${statistics.text.minimumLength}–${statistics.text.maximumLength}`}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-      {profile.type === "empty" ? "No populated values." : "No additional statistics available."}
-    </p>
-  );
-}
-
-/* ---------- page ---------- */
+const severityStyle: Record<QualitySeverity, string> = {
+  error: "bg-red-500",
+  warning: "bg-amber-500",
+  info: "bg-blue-500",
+};
 
 export default function DashboardPage() {
-  const { rows, columns, fileName, columnOverrides, pinnedCharts, unpinChart } = useDataset();
+  const { rows, columns, columnOverrides, pinnedCharts, pinChart, unpinChart } = useDataset();
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [selectedDimension, setSelectedDimension] = useState("");
+  const [selectedValue, setSelectedValue] = useState("");
 
-  const datasetStatistics = useMemo(
+  const sourceStatistics = useMemo(
     () => calculateDatasetStatistics(columns, rows, columnOverrides),
-    [columns, rows, columnOverrides],
+    [columnOverrides, columns, rows],
   );
-  const numericCols = useMemo(
-    () =>
-      datasetStatistics.columns
-        .filter(({ profile }) => profile.type === "number" && profile.role === "measure")
-        .map(({ profile }) => profile.column),
-    [datasetStatistics.columns],
+  const dateStatistic = sourceStatistics.columns.find(
+    ({ profile, date }) => profile.role === "temporal" && Boolean(date),
   );
+  const dimensions = useMemo(
+    () => sourceStatistics.columns.filter(({ profile }) => profile.role === "dimension" && profile.distinct >= 2 && profile.distinct <= 50),
+    [sourceStatistics.columns],
+  );
+  const dimensionName = dimensions.some(({ profile }) => profile.column === selectedDimension)
+    ? selectedDimension
+    : dimensions[0]?.profile.column ?? "";
+  const dimensionValues = useMemo(
+    () => dimensionName
+      ? [...new Set(rows.map((row) => (row[dimensionName] ?? "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)).slice(0, 100)
+      : [],
+    [dimensionName, rows],
+  );
+  const categoryValue = dimensionValues.includes(selectedValue) ? selectedValue : "";
+  const filteredRows = useMemo(
+    () => filterDashboardRows(rows, {
+      dateColumn: dateStatistic?.profile.column,
+      dateFrom,
+      dateTo,
+      categoryColumn: dimensionName,
+      categoryValue,
+    }),
+    [categoryValue, dateFrom, dateStatistic?.profile.column, dateTo, dimensionName, rows],
+  );
+  const filteredStatistics = useMemo(
+    () => calculateDatasetStatistics(columns, filteredRows, columnOverrides),
+    [columnOverrides, columns, filteredRows],
+  );
+  const quality = useMemo(
+    () => analyseDataQuality(columns, filteredRows, filteredStatistics),
+    [columns, filteredRows, filteredStatistics],
+  );
+  const recommendations = useMemo(() => recommendCharts(sourceStatistics, 3), [sourceStatistics]);
+  const filterCount = Number(Boolean(dateFrom || dateTo)) + Number(Boolean(categoryValue));
+  const hasRows = filteredRows.length > 0;
+  const qualityTone = quality.score >= 85 ? "text-emerald-600 dark:text-emerald-400" : quality.score >= 65 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
 
-  const [groupBy, setGroupBy] = useState("");
-  const [valueCol, setValueCol] = useState("");
-
-  useEffect(() => {
-    if (!columns.length) {
-      setGroupBy("");
-      setValueCol("");
-      return;
-    }
-
-    if (!groupBy || !columns.includes(groupBy)) {
-      setGroupBy(pickDefaultGroupBy(columns, rows));
-    }
-
-    if (numericCols.length > 0) {
-      if (!valueCol || !numericCols.includes(valueCol)) setValueCol(numericCols[0]);
-    } else {
-      setValueCol("");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns, rows, numericCols.join("|")]);
-
-  const countData = useMemo(() => {
-    if (!groupBy || !rows.length) return [];
-    return getCategoryCounts(rows, groupBy);
-  }, [rows, groupBy]);
-
-  const sumData = useMemo(() => {
-    if (!groupBy || !rows.length || !valueCol) return [];
-    return sumByGroup(rows, groupBy, valueCol);
-  }, [rows, groupBy, valueCol]);
-
-  const colSummary = useMemo(() => {
-    // Show most “useful” columns first: low missing + reasonable distinct counts
-    return [...datasetStatistics.columns]
-      .sort((a, b) => {
-        const aProfile = a.profile;
-        const bProfile = b.profile;
-        const aScore =
-          (aProfile.role === "measure" || aProfile.role === "dimension" || aProfile.role === "temporal" ? 2 : 1) +
-          (1 - aProfile.missing / Math.max(1, rows.length)) +
-          (aProfile.distinct >= 2 && aProfile.distinct <= 30 ? 1 : 0);
-        const bScore =
-          (bProfile.role === "measure" || bProfile.role === "dimension" || bProfile.role === "temporal" ? 2 : 1) +
-          (1 - bProfile.missing / Math.max(1, rows.length)) +
-          (bProfile.distinct >= 2 && bProfile.distinct <= 30 ? 1 : 0);
-        return bScore - aScore;
-      })
-      .slice(0, 6);
-  }, [datasetStatistics.columns, rows.length]);
+  function resetFilters() {
+    setDateFrom("");
+    setDateTo("");
+    setSelectedDimension("");
+    setSelectedValue("");
+  }
 
   if (!rows.length) {
-    return (
-      <EmptyState
-        title="Dashboard"
-        description="No dataset loaded yet. Import a data file to see summary stats and charts."
-      />
-    );
+    return <EmptyState title="Dashboard" description="No dataset loaded yet. Import a data file to see its key metrics, recommended charts, and quality summary." />;
   }
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-          Dashboard
-        </h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          {fileName ? `Loaded: ${fileName}` : ""}
-        </p>
-      </div>
+    <div className="space-y-6">
+      <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Dashboard</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">A focused overview of structure, trends, and data health.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/insights" className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"><Lightbulb size={16} aria-hidden="true" /> View insights</Link>
+          <Link to="/charts" className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">Build chart <ArrowRight size={16} aria-hidden="true" /></Link>
+        </div>
+      </header>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-        <KpiCard label="Rows" value={datasetStatistics.rowCount.toLocaleString()} />
-        <KpiCard label="Columns" value={datasetStatistics.columnCount.toString()} />
-        <KpiCard
-          label="Measures"
-          value={numericCols.length.toString()}
-          hint="Numeric fields safe to aggregate"
-        />
-        <KpiCard label="Date columns" value={datasetStatistics.typeCounts.date.toString()} />
-        <KpiCard
-          label="Missing cells"
-          value={datasetStatistics.missingCells.toLocaleString()}
-          hint={`of ${datasetStatistics.totalCells.toLocaleString()} cells`}
-        />
-        <KpiCard
-          label="Completeness"
-          value={(datasetStatistics.completeness * 100).toFixed(1) + "%"}
-          hint="Higher is better"
-        />
-      </div>
+      <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95" aria-label="Dashboard filters">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
+          <div className="flex min-w-40 items-center gap-2 xl:self-center">
+            <span className="flex size-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"><Filter size={17} aria-hidden="true" /></span>
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Scope the overview</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{filteredRows.length.toLocaleString()} of {rows.length.toLocaleString()} rows</p>
+            </div>
+          </div>
+
+          {dateStatistic?.date ? (
+            <>
+              <label className="min-w-36 flex-1 text-xs font-medium text-slate-600 dark:text-slate-300">From · {dateStatistic.profile.column}<input type="date" min={dateStatistic.date.earliest.slice(0, 10)} max={dateStatistic.date.latest.slice(0, 10)} value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className={controlClass} /></label>
+              <label className="min-w-36 flex-1 text-xs font-medium text-slate-600 dark:text-slate-300">To · {dateStatistic.profile.column}<input type="date" min={dateStatistic.date.earliest.slice(0, 10)} max={dateStatistic.date.latest.slice(0, 10)} value={dateTo} onChange={(event) => setDateTo(event.target.value)} className={controlClass} /></label>
+            </>
+          ) : null}
+
+          {dimensions.length ? (
+            <>
+              <label className="min-w-40 flex-1 text-xs font-medium text-slate-600 dark:text-slate-300">Filter field<select value={dimensionName} onChange={(event) => { setSelectedDimension(event.target.value); setSelectedValue(""); }} className={controlClass}>{dimensions.map(({ profile }) => <option key={profile.column} value={profile.column}>{profile.column}</option>)}</select></label>
+              <label className="min-w-40 flex-1 text-xs font-medium text-slate-600 dark:text-slate-300">Value<select value={categoryValue} onChange={(event) => setSelectedValue(event.target.value)} className={controlClass}><option value="">All values</option>{dimensionValues.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+            </>
+          ) : null}
+
+          <button type="button" onClick={resetFilters} disabled={!filterCount} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"><RotateCcw size={15} aria-hidden="true" /> Reset</button>
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Dataset key metrics">
+        <KpiCard icon={<Rows3 size={17} />} label="Rows" value={filteredRows.length.toLocaleString()} hint={filterCount ? `${rows.length.toLocaleString()} rows before filters` : "Available for analysis"} />
+        <KpiCard icon={<Columns3 size={17} />} label="Columns" value={sourceStatistics.columnCount.toLocaleString()} hint={`${sourceStatistics.roleCounts.measure} measures · ${sourceStatistics.roleCounts.dimension} dimensions`} />
+        <KpiCard icon={<CircleGauge size={17} />} label="Completeness" value={hasRows ? `${(filteredStatistics.completeness * 100).toFixed(1)}%` : "—"} hint={hasRows ? `${filteredStatistics.missingCells.toLocaleString()} missing cells` : "No rows match the filters"} />
+        <KpiCard icon={<ShieldCheck size={17} />} label="Quality score" value={hasRows ? `${quality.score}/100` : "—"} hint={hasRows ? `${quality.issues.length} detected issue${quality.issues.length === 1 ? "" : "s"}` : "Reset filters to inspect quality"} />
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <div><h3 className="text-base font-semibold text-slate-950 dark:text-white">Recommended overview</h3><p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Charts are selected from detected roles and update with the filters above.</p></div>
+          <Link to="/insights" className="hidden items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 sm:inline-flex dark:text-blue-400">All recommendations <ArrowRight size={14} /></Link>
+        </div>
+
+        {recommendations.length ? (
+          <>
+            <DashboardChart recommendation={recommendations[0]} rows={filteredRows} pinned={pinnedCharts.some(({ id }) => id === recommendations[0].id)} onToggle={() => pinnedCharts.some(({ id }) => id === recommendations[0].id) ? unpinChart(recommendations[0].id) : pinChart(recommendations[0])} />
+            {recommendations.length > 1 ? <div className="grid gap-4 xl:grid-cols-2">{recommendations.slice(1).map((recommendation) => <DashboardChart key={recommendation.id} recommendation={recommendation} rows={filteredRows} pinned={pinnedCharts.some(({ id }) => id === recommendation.id)} onToggle={() => pinnedCharts.some(({ id }) => id === recommendation.id) ? unpinChart(recommendation.id) : pinChart(recommendation)} />)}</div> : null}
+          </>
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900"><SlidersHorizontal className="mx-auto text-slate-400" size={24} /><h4 className="mt-3 font-semibold text-slate-900 dark:text-slate-100">No safe chart recommendation yet</h4><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Confirm column roles in Profile or create a chart manually.</p></div>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+          <div className="flex items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><ShieldCheck size={19} /></span><div><h3 className="font-semibold text-slate-950 dark:text-white">Data quality at a glance</h3><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Quality checks reflect the current dashboard filters.</p></div></div>
+          <div className="flex items-center gap-4"><div className="text-right"><p className={`text-2xl font-bold ${hasRows ? qualityTone : "text-slate-400"}`}>{hasRows ? quality.score : "—"}</p><p className="text-[11px] text-slate-500 dark:text-slate-400">out of 100</p></div><Link to="/quality" className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Open report <ArrowRight size={14} /></Link></div>
+        </div>
+
+        {hasRows ? (
+          <div className="mt-5 grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">{(["error", "warning", "info"] as QualitySeverity[]).map((severity) => <div key={severity} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-950"><span className="flex items-center gap-2 text-xs capitalize text-slate-600 dark:text-slate-300"><span className={`size-2 rounded-full ${severityStyle[severity]}`} />{severity}</span><span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{quality.counts[severity]}</span></div>)}</div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">{quality.issues.length ? quality.issues.slice(0, 3).map((issue) => <div key={issue.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"><span className={`size-2 shrink-0 rounded-full ${severityStyle[issue.severity]}`} /><p className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-300">{issue.title}</p><span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{issue.affectedCount.toLocaleString()} affected</span></div>) : <p className="py-4 text-sm text-emerald-600 dark:text-emerald-400">No quality issues detected in this view.</p>}</div>
+          </div>
+        ) : <p className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-950 dark:text-slate-400">No rows match the current filters. Reset them to continue the analysis.</p>}
+      </section>
 
       {pinnedCharts.length ? (
         <section className="space-y-3">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                Pinned dashboard
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Recommended and custom charts saved for the current dataset session.
-              </p>
-            </div>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              {pinnedCharts.length} chart{pinnedCharts.length === 1 ? "" : "s"}
-            </span>
-          </div>
-          <div className="grid gap-4 xl:grid-cols-2">
-            {pinnedCharts.map((chart) => (
-              <SmartChart
-                key={chart.id}
-                config={chart}
-                rows={rows}
-                action={
-                  <button
-                    onClick={() => unpinChart(chart.id)}
-                    className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                  >
-                    Remove
-                  </button>
-                }
-              />
-            ))}
-          </div>
+          <div className="flex items-end justify-between gap-3"><div><h3 className="text-base font-semibold text-slate-950 dark:text-white">Pinned charts</h3><p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Your saved views, scoped by the same dashboard filters.</p></div><span className="text-xs text-slate-500 dark:text-slate-400">{pinnedCharts.length}/12</span></div>
+          <div className="grid gap-4 xl:grid-cols-2">{pinnedCharts.map((chart) => <SmartChart key={chart.id} config={chart} rows={filteredRows} action={<button type="button" onClick={() => unpinChart(chart.id)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Remove</button>} />)}</div>
         </section>
       ) : null}
-
-      {/* Dataset-level statistics */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-          <div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              Dataset snapshot
-            </div>
-            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Statistical structure across the complete loaded dataset.
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <Statistic
-              label="Populated cells"
-              value={datasetStatistics.populatedCells.toLocaleString()}
-            />
-            <Statistic
-              label="Duplicate rows"
-              value={datasetStatistics.duplicateRows.toLocaleString()}
-            />
-            <Statistic
-              label="Date coverage"
-              value={
-                datasetStatistics.dateCoverage
-                  ? `${formatDate(datasetStatistics.dateCoverage.earliest)} – ${formatDate(datasetStatistics.dateCoverage.latest)}`
-                  : "Not detected"
-              }
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              Detected types
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {Object.entries(datasetStatistics.typeCounts)
-                .filter(([, count]) => count > 0)
-                .map(([type, count]) => <Chip key={type}>{type}: {count}</Chip>)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              Analytical roles
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {Object.entries(datasetStatistics.roleCounts)
-                .filter(([, count]) => count > 0)
-                .map(([role, count]) => <Chip key={role}>{role}: {count}</Chip>)}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div className="rounded-xl border bg-white p-4 shadow-sm border-slate-200 dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              Group by
-            </div>
-            <select
-              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm bg-white border-slate-200 text-slate-900
-                         dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value)}
-            >
-              {columns.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              Sum column
-            </div>
-            <select
-              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm bg-white border-slate-200 text-slate-900 disabled:opacity-50
-                         dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
-              value={valueCol}
-              onChange={(e) => setValueCol(e.target.value)}
-              disabled={numericCols.length === 0}
-            >
-              {numericCols.length === 0 ? (
-                <option value="">(No numeric columns)</option>
-              ) : (
-                numericCols.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))
-              )}
-            </select>
-          </div>
-
-          <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800">
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              Quick insight
-            </div>
-            <div className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-              {valueCol && sumData.length
-                ? `Top: ${sumData[0].label} (${formatNumber(sumData[0].value)})`
-                : countData.length
-                ? `Top: ${countData[0].label} (${countData[0].value} rows)`
-                : "—"}
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Chip>{groupBy || "—"}</Chip>
-              <Chip>{valueCol || "No numeric"}</Chip>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <BarCountChart title={`Row count by "${groupBy}"`} data={countData} variant="primary" />
-        <BarCountChart
-          title={valueCol ? `Sum of "${valueCol}" by "${groupBy}"` : "Sum chart (no numeric columns)"}
-          data={valueCol ? sumData : []}
-          variant="accent"
-        />
-      </div>
-
-      {/* Column summary */}
-      <div className="rounded-xl border bg-white p-4 shadow-sm border-slate-200 dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              Column statistics preview
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              Type-aware statistics for the six most analytically useful columns.
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
-          {colSummary.map((statistics) => {
-            const c = statistics.profile;
-            return (
-              <div
-                key={c.column}
-                className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {c.column}
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      <Chip>Type: {c.type}</Chip>
-                      <Chip>Role: {c.role}</Chip>
-                      <Chip>{c.distinct.toLocaleString()} distinct</Chip>
-                      <Chip>{c.missing.toLocaleString()} missing</Chip>
-                    </div>
-                  </div>
-                  <div className="text-right text-xs text-slate-500 dark:text-slate-400">
-                    {Math.round(c.confidence * 100)}% confidence
-                  </div>
-                </div>
-
-                <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                  {c.reason}
-                </p>
-
-                {c.sampleValues.length ? (
-                  <p className="mt-2 truncate text-xs text-slate-500 dark:text-slate-400">
-                    Examples: {c.sampleValues.join(" · ")}
-                  </p>
-                ) : null}
-
-                <ColumnStatisticGrid statistics={statistics} />
-
-                {/* completeness bar */}
-                <div
-                  className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
-                  title={`${Math.round(c.completeness * 100)}% complete`}
-                >
-                  <div
-                    className="h-full rounded-full bg-slate-900 dark:bg-slate-100"
-                    style={{ width: `${Math.round(c.completeness * 100)}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }
