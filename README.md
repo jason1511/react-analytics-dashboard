@@ -27,13 +27,14 @@ A full-stack tabular-data analytics portfolio application built on React and Clo
 - Interactive Recharts visualisations
 - Search and multi-column filtering
 - Responsive light and dark interface
+- Workflow-grouped navigation with persistent active-dataset context
 - Downloadable 12-month sales showcase with deliberate examples for profiling and quality analysis
 
 ## Cloudflare-native stack
 
 | Layer | Technology | Responsibility |
 |---|---|---|
-| Interface | React 19, TypeScript, Vite, Tailwind CSS | Upload, analysis, exploration, and charts |
+| Interface | React 19, TypeScript, Vite, Tailwind CSS, Lucide | Import, analysis, exploration, and charts |
 | API | Cloudflare Workers | Authentication and owner-scoped dataset endpoints |
 | Relational data | Cloudflare D1 | Users, password hashes, sessions, and dataset metadata |
 | Object storage | Cloudflare R2 | Private normalized dataset contents |
